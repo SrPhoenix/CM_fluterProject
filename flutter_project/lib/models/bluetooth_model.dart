@@ -3,7 +3,7 @@ import 'dart:collection';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
-import 'package:flutter_project/classes/bluetooth_devices.dart';
+import 'package:flutter_project/classes/bluetooth_device.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class BluetoothModel extends ChangeNotifier {
@@ -31,7 +31,8 @@ class BluetoothModel extends ChangeNotifier {
     _subscription = _flutterReactiveBle.scanForDevices(
         withServices: [], scanMode: ScanMode.lowLatency).listen((device) {
       //code for handling results
-      debugPrint('device: ${device.name} ${device.id}');
+      debugPrint('device name : ${device.name}');
+      debugPrint('device id: ${device.id}');
       if (device.name.trim() != '' && !_deviceIds.contains(device.id)) {
         debugPrint(
             'deviceIds contains ${device.id}: ${_deviceIds.contains(device.id)}');
