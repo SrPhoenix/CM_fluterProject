@@ -1,0 +1,5 @@
+package com.example.hr_game
+
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity: FlutterActivity()
