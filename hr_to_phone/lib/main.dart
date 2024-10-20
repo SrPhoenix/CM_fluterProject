@@ -114,8 +114,6 @@ class _MyAppState extends State<MyApp> {
 
   void startGame() async {
     if (!gameStarted) {
-      final supportedExerciseTypes = await workout.getSupportedExerciseTypes();
-      debugPrint('Supported exercise types: ${supportedExerciseTypes.length}');
       final result = await workout.start(
         // In a real application, check the supported exercise types first
         exerciseType: exerciseType,
