@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:workout/workout.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -75,14 +74,28 @@ class _MyAppState extends State<MyApp> {
               padding: const EdgeInsets.all(16),
               child: SafeArea(
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text('Heart rate: $heartRate'),
-                    const SizedBox(width: 16),
-                    const Text('Log'),
-                    ..._log.reversed.map(Text.new),
-                  ],
-                ),
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: <Widget>[
+                            Text(
+                              gameStarted
+                                  ? heartRate.toString()
+                                  : "--",
+                              style: const TextStyle(
+                                  fontSize: 60,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: 'Raleway'),
+                            ),
+                            const SizedBox(
+                              height: 3,
+                            ),
+                            const Icon(
+                              Icons.favorite,
+                              color: Colors.red,
+                              size: 40,
+                            ),
+                          ],
+                        ),
               ),
             ),
           ),
