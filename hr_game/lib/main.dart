@@ -34,6 +34,9 @@ class _MyAppState extends State<MyApp> {
   var hearRateData = <double>[];
   var hearRateFullData = <double>[];
 
+  var startHeartRate = 0.0;
+  var currentHeartRate = 0.0;
+
   Timer? timer;
 
   @override
@@ -49,6 +52,14 @@ class _MyAppState extends State<MyApp> {
       // print("Len Data: ${hearRateData.length}");
       // print("Len FullData: ${hearRateFullData.length}");
       if (e["HeartRate"] != 0.0) {
+        if (startHeartRate == 0) {
+          setState(() {
+            startHeartRate = e["HeartRate"];
+          });
+        }
+        setState(() {
+          currentHeartRate = e["HeartRate"];
+        });
         hearRateFullData.add(e["HeartRate"]);
         hearRateData.add(e["HeartRate"]);
         if (hearRateData.length == 20) {
@@ -75,6 +86,7 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      theme: ThemeData.dark(),
       home: Scaffold(
         body: Center(
           child: SingleChildScrollView(
@@ -84,6 +96,31 @@ class _MyAppState extends State<MyApp> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   SfCartesianChart(
+                    plotAreaBorderWidth: 0,
+                    primaryXAxis: const NumericAxis(
+                      isVisible: false,
+                    ),
+                    primaryYAxis: NumericAxis(
+                      majorGridLines: const MajorGridLines(width: 0),
+                      axisLine: const AxisLine(width: 0),
+                      interval: 10,
+                      minimum: startHeartRate - 10,
+                      maximum: startHeartRate + 10,
+                      plotBands: [
+                        PlotBand(
+                          start: startHeartRate - 10,
+                          end: startHeartRate - 10,
+                          borderColor: Colors.red,
+                          borderWidth: 4,
+                        ),
+                        PlotBand(
+                          start: startHeartRate + 10,
+                          end: startHeartRate + 10,
+                          borderColor: Colors.red,
+                          borderWidth: 4,
+                        ),
+                      ],
+                    ),
                     series: <LineSeries<double, int>>[
                       LineSeries<double, int>(
                         onRendererCreated: (ChartSeriesController controller) {
@@ -92,6 +129,28 @@ class _MyAppState extends State<MyApp> {
                         dataSource: hearRateData,
                         xValueMapper: (_, index) => index,
                         yValueMapper: (heartRate, _) => heartRate,
+                      ),
+                    ],
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(currentHeartRate != 0
+                      ? currentHeartRate.toString()
+                                  : "--",
+                        style: const TextStyle(
+                            fontSize: 60,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'Raleway'),
+                      ),
+                      const SizedBox(
+                        height: 3,
+                      ),
+                      const Icon(
+                        Icons.favorite,
+                        color: Colors.red,
+                        size: 40,
                       ),
                     ],
                   ),
