@@ -2,8 +2,11 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
+import 'package:nakama/nakama.dart';
 import 'dart:math';
 
 import '../settings/persistence/local_storage_settings_persistence.dart';
@@ -21,6 +24,15 @@ class PlayerController {
   ValueNotifier<String> playerName = ValueNotifier('Anonymous${Random().nextInt(1000)}');
 
   ValueNotifier<String> lobbyCode = ValueNotifier('XAS123');
+  late final NakamaBaseClient _client;
+  late final Session _session;
+  late final NakamaWebsocketClient _socket;
+  late Match _match;
+  late bool _isHost;
+  final List<UserPresence> connectedOpponents = [];
+  
+  // Declare a variable to store which presence is the host
+  late UserPresence hostPresence;
 
   /// Creates a new instance of [SettingsController] backed by [store].
   ///
@@ -29,7 +41,63 @@ class PlayerController {
   /// local storage on the web).
   PlayerController({SettingsPersistence? store})
       : _store = store ?? LocalStorageSettingsPersistence() {
-    _loadStateFromPersistence();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    await _loadStateFromPersistence();
+    _client = getNakamaClient(
+      host: '192.168.160.57',
+      ssl: false,
+      serverKey: 'defaultkey',
+      grpcPort: 7349, // optional
+      httpPort: 7350, // optional
+    );
+    _session = await _client.authenticateDevice(deviceId: 'AnonymousPlayer${Random().nextInt(1000)}', username: playerName.value);
+    _socket = NakamaWebsocketClient.init(
+      host: '127.0.0.1',
+      ssl: false,
+      token: _session.token,
+    );
+  }
+
+  Future<void> createMatch() async {
+    _match = await _socket.createMatch();
+    lobbyCode.value = _match.matchId;
+    if (kDebugMode) {
+      print('Match created with ID: ${lobbyCode.value}');
+    }
+    _isHost = true;
+  }
+
+  Future<void> joinMatch() async {
+    _match = await _socket.joinMatch( lobbyCode.value);
+    if (kDebugMode) {
+      print('Joined match with ID: $lobbyCode.value');
+    }
+    _socket.onMatchPresence.listen((event) {
+      connectedOpponents.removeWhere((opponent) => event.leaves.any((leave) => leave.userId == opponent.userId));
+      connectedOpponents.addAll(event.joins);
+    });
+    _isHost = false;
+  }
+  bool getHost () {
+    return _isHost;
+  }
+  void sendMessage(Map<String, dynamic> data)  {
+    _socket.sendMatchData(
+      matchId: lobbyCode.value,
+      opCode: Int64(1),
+      data: utf8.encode(jsonEncode(data)),
+    );
+    }
+
+  void listenForMessages() {
+    _socket.onMatchData.listen((data) {
+      if (kDebugMode) {
+        print('Received message: ${data.data}');
+      }
+    });
   }
 
   void setPlayerName(String name) {

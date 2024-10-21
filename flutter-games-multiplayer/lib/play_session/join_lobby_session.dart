@@ -43,6 +43,16 @@ class JoinLobbySession extends StatelessWidget {
               ),
             ),
             _gap,
+            const Text(
+              'Insert Code',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Permanent Marker',
+                fontSize: 12,
+                height: 1,
+              ),
+            ),
+            _gap,
             TextField(
               controller: _controller,
               autofocus: true,
@@ -51,15 +61,15 @@ class JoinLobbySession extends StatelessWidget {
               textCapitalization: TextCapitalization.words,
               textInputAction: TextInputAction.done,
               onChanged: (value) {
-                controller.setPlayerName(value);
+                controller.setLobbyCode(value);
               },
             ),
             _gap,
             MyButton(
               onPressed: () {
                 audioController.playSfx(SfxType.buttonTap);
-                GoRouter.of(context).go('/play/Room', extra: {'Name': controller.playerName.value});
-
+                GoRouter.of(context).go('/play/Room');
+                controller.joinMatch();
               },
               child: const Text('Join'),
             ),

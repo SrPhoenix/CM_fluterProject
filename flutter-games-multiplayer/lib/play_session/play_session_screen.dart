@@ -7,6 +7,8 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:multiplayer/audio/audio_controller.dart';
+import 'package:multiplayer/play_session/PlayerController.dart';
 import 'package:nakama/nakama.dart';
 import 'package:provider/provider.dart';
 
@@ -24,68 +26,14 @@ class PlaySessionRoomScreen extends StatefulWidget {
 }
 
 class _PlaySessionRoomScreen extends State<PlaySessionRoomScreen> {
-  late final String playerName;
-  late final NakamaBaseClient _client;
-  late final Session _session;
-  late final NakamaWebsocketClient _socket;
-  String? _matchId;
-  
-  @override
-  void initState() {
-    super.initState();
-    playerName = widget.playerName;
-  }
 
-Future<void> initializeNakama() async {
-    _client = getNakamaClient(
-      host: '127.0.0.1',
-      ssl: false,
-      serverKey: 'defaultkey',
-      grpcPort: 7349, // optional
-      httpPort: 7350, // optional
-    );
-
-    _session = await _client.authenticateDevice(username: playerName, deviceId: "RandomDeviceId${Random().nextInt(1000)}");
-    _socket = NakamaWebsocketClient.init(
-      host: '127.0.0.1',
-      ssl: false,
-      token: _session.token,
-    );
-    final match = await _socket.createMatch();
-    _matchId = match.matchId;
-    print('Match created with ID: ${_matchId}');
-
-
-  }
-
-  Future<void> joinMatch(String matchId) async {
-    await _socket.joinMatch(matchId);
-    setState(() {
-      _matchId = matchId;
-    });
-    print('Joined match with ID: $matchId');
-  }
-
-  Future<void> sendMessage(Map<String, dynamic> data) async {
-    if (_matchId != null) {
-      _socket.sendMatchData(
-      matchId: _matchId!,
-      opCode: Int64(1),
-      data: utf8.encode(jsonEncode(data)),
-    );
-    }
-  }
-
-  void listenForMessages() {
-    _socket.onMatchData.listen((data) {
-      print('Received message: ${data.data}');
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
     final palette = context.watch<Palette>();
-
+    final controller = context.watch<PlayerController>();
+    final audioController = context.watch<AudioController>();
+    String buttonText = controller.getHost() ? 'Start Game' : 'Ready';
     const gap = SizedBox(height: 10);
 
     return Scaffold(
@@ -97,18 +45,34 @@ Future<void> initializeNakama() async {
             gap,
             Center(
               child: Text(
-                'Room: $_matchId',
+                'Room: $controller.lobbyCode',
                 style: TextStyle(fontFamily: 'Permanent Marker', fontSize: 50),
               ),
             ),
             gap,
+            ListView(
+              shrinkWrap: true,
+              children: controller.connectedOpponents.map((opponent) {
+                return ListTile(
+                  title: Text(opponent.username),
+                );
+              }).toList(),
+            ),
           ],
         ),
         rectangularMenuArea: MyButton(
           onPressed: () {
             GoRouter.of(context).go('/');
+            if (controller.getHost()) {
+              GoRouter.of(context).go('/play/Game');
+            }else{
+                setState(() {
+                // Change the button text on button click
+                buttonText = 'Waiting Host';
+              });
+            }
           },
-          child: const Text('Continue'),
+          child: Text(buttonText),
         ),
       ),
     );
