@@ -10,6 +10,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
+import 'package:multiplayer/play_session/PlayerController.dart';
 import 'package:provider/provider.dart';
 
 import 'app_lifecycle/app_lifecycle.dart';
@@ -68,6 +69,7 @@ class MyApp extends StatelessWidget {
         // See `lib/main_menu/main_menu_screen.dart` for example usage.
         providers: [
           Provider(create: (context) => SettingsController()),
+          Provider(create: (context) => PlayerController()),
           Provider(create: (context) => Palette()),
           ChangeNotifierProvider(create: (context) => PlayerProgress()),
           // Set up audio.

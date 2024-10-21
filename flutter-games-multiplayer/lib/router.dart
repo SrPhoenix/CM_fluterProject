@@ -5,6 +5,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:multiplayer/play_session/create_user_session.dart';
+import 'package:multiplayer/play_session/join_lobby_session.dart';
 import 'package:provider/provider.dart';
 
 import 'game_internals/score.dart';
@@ -28,7 +29,7 @@ final router = GoRouter(
           pageBuilder: (context, state) => buildMyTransition<void>(
             key: const ValueKey('play'),
             color: context.watch<Palette>().backgroundPlaySession,
-            child: const CreateUserSession(
+            child: CreateUserSession(
               key: Key('level selection'),
             ),
           ),
@@ -81,6 +82,32 @@ final router = GoRouter(
                   child: PlaySessionRoomScreen(
                     playerName: score,
                     key: const Key('win game'),
+                  ),
+                );
+              },
+            ),
+            GoRoute(
+              path: 'joinRoom',
+              redirect: (context, state) {
+                if (state.extra == null) {
+                  // Trying to navigate to a win screen without any data.
+                  // Possibly by using the browser's back button.
+                  return '/';
+                }
+
+                // Otherwise, do not redirect.
+                return null;
+              },
+              pageBuilder: (context, state) {
+                final map = state.extra! as Map<String, dynamic>;
+                final playerName = map['Name'] as String;
+
+                return buildMyTransition<void>(
+                  key: const ValueKey('joinRoom'),
+                  color: context.watch<Palette>().backgroundPlaySession,
+                  child: JoinLobbySession(
+                    playerName: playerName,
+                    key: const Key('Join Lobby'),
                   ),
                 );
               },

@@ -15,9 +15,9 @@ import '../style/my_button.dart';
 import '../style/palette.dart';
 import '../style/responsive_screen.dart';
 
-class CreateUserSession extends StatelessWidget {
-  CreateUserSession({super.key});
-  String playerName =  "AnonymousPlayer${Random().nextInt(1000)}";
+class JoinLobbySession extends StatelessWidget {
+  JoinLobbySession({super.key, required this.playerName});
+  String playerName ;
   static const _gap = SizedBox(height: 60);
 
   @override
@@ -34,7 +34,7 @@ class CreateUserSession extends StatelessWidget {
           children: [
             _gap,
             const Text(
-              'Create User Name',
+              'Join Lobby',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: 'Permanent Marker',
@@ -58,19 +58,10 @@ class CreateUserSession extends StatelessWidget {
             MyButton(
               onPressed: () {
                 audioController.playSfx(SfxType.buttonTap);
-                GoRouter.of(context).go('/play/createRoom', extra: {'Name': controller.playerName.value});
+                GoRouter.of(context).go('/play/Room', extra: {'Name': controller.playerName.value});
 
               },
-              child: const Text('Create Lobby'),
-            ),
-            _gap,
-            MyButton(
-              onPressed: () {
-                audioController.playSfx(SfxType.buttonTap);
-                GoRouter.of(context).go('/play/joinRoom', extra: {'Name': controller.playerName.value});
-
-              },
-              child: const Text('Join Lobby'),
+              child: const Text('Join'),
             ),
             _gap,
           ],
