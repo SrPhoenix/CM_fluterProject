@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 
 import 'package:watch_connectivity/watch_connectivity.dart';
 
+import 'package:syncfusion_flutter_charts/charts.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -20,6 +22,8 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   final _watch = WatchConnectivity();
 
+  ChartSeriesController? _chartSeriesController;
+
   var _supported = false;
   var _paired = false;
   var _reachable = false;
@@ -27,17 +31,33 @@ class _MyAppState extends State<MyApp> {
   var _receivedContexts = <Map<String, dynamic>>[];
   final _log = <String>[];
 
+  var hearRateData = <double>[];
+  var hearRateFullData = <double>[];
+
   Timer? timer;
 
   @override
   void initState() {
     super.initState();
 
-    _watch.messageStream
-        .listen((e) => setState(() => _log.add('Received message: $e')));
-
-    _watch.contextStream
-        .listen((e) => setState(() => _log.add('Received context: $e')));
+    _watch.messageStream.listen((e) {
+      setState(() => _log.add('Received message: $e'));
+      // print("Whole: $e");
+      // print("Bool: ${e.containsKey("HeartRate")}");
+      // print("Type: ${e["HeartRate"].runtimeType}");
+      // print("Value: ${e["HeartRate"]}");
+      // print("Len Data: ${hearRateData.length}");
+      // print("Len FullData: ${hearRateFullData.length}");
+      if (e["HeartRate"] != 0.0) {
+        hearRateFullData.add(e["HeartRate"]);
+        hearRateData.add(e["HeartRate"]);
+        if (hearRateData.length == 20) {
+          hearRateData.removeAt(0);
+          _chartSeriesController?.updateDataSource(
+              addedDataIndex: hearRateData.length - 1, removedDataIndex: 0);
+        }
+      }
+    });
 
     initPlatformState();
   }
@@ -63,6 +83,18 @@ class _MyAppState extends State<MyApp> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  SfCartesianChart(
+                    series: <LineSeries<double, int>>[
+                      LineSeries<double, int>(
+                        onRendererCreated: (ChartSeriesController controller) {
+                          _chartSeriesController = controller;
+                        },
+                        dataSource: hearRateData,
+                        xValueMapper: (_, index) => index,
+                        yValueMapper: (heartRate, _) => heartRate,
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 8),
                   const Text('Send'),
                   Row(
@@ -102,21 +134,4 @@ class _MyAppState extends State<MyApp> {
     _watch.sendMessage(message);
     setState(() => _log.add('Sent message: $message'));
   }
-
-  // void sendContext() {
-  //   _count++;
-  //   final context = {'data': _count};
-  //   _watch.updateApplicationContext(context);
-  //   setState(() => _log.add('Sent context: $context'));
-  // }
-
-  // void toggleBackgroundMessaging() {
-  //   if (timer == null) {
-  //     timer = Timer.periodic(const Duration(seconds: 1), (_) => sendMessage());
-  //   } else {
-  //     timer?.cancel();
-  //     timer = null;
-  //   }
-  //   setState(() {});
-  // }
 }
