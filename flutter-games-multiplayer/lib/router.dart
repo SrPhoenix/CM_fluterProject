@@ -62,25 +62,12 @@ final router = GoRouter(
             ),
             GoRoute(
               path: 'room',
-              redirect: (context, state) {
-                if (state.extra == null) {
-                  // Trying to navigate to a win screen without any data.
-                  // Possibly by using the browser's back button.
-                  return '/';
-                }
-
-                // Otherwise, do not redirect.
-                return null;
-              },
               pageBuilder: (context, state) {
-                final map = state.extra! as Map<String, dynamic>;
-                final score = map['Name'] as String;
 
                 return buildMyTransition<void>(
                   key: const ValueKey('won'),
                   color: context.watch<Palette>().backgroundPlaySession,
                   child: PlaySessionRoomScreen(
-                    playerName: score,
                     key: const Key('win game'),
                   ),
                 );
@@ -88,16 +75,6 @@ final router = GoRouter(
             ),
             GoRoute(
               path: 'joinRoom',
-              redirect: (context, state) {
-                if (state.extra == null) {
-                  // Trying to navigate to a win screen without any data.
-                  // Possibly by using the browser's back button.
-                  return '/';
-                }
-
-                // Otherwise, do not redirect.
-                return null;
-              },
               pageBuilder: (context, state) {
                 final map = state.extra! as Map<String, dynamic>;
                 final playerName = map['Name'] as String;

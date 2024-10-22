@@ -56,10 +56,10 @@ class CreateUserSession extends StatelessWidget {
             ),
             _gap,
             MyButton(
-              onPressed: () {
+              onPressed: () async {
                 audioController.playSfx(SfxType.buttonTap);
-                GoRouter.of(context).go('/play/createRoom', extra: {'Name': controller.playerName.value});
-
+                await controller.createMatch();
+                GoRouter.of(context).go('/play/room');
               },
               child: const Text('Create Lobby'),
             ),
