@@ -59,7 +59,7 @@ class PlayerController {
     print("Player Name: ${playerName.value}");
     _session = await _client.authenticateDevice(deviceId: 'AnonymousPlayer${Random().nextInt(1000)}', username: playerName.value);
     _socket = NakamaWebsocketClient.init(
-      host: '127.0.0.1',
+      host: '192.168.160.57',
       ssl: false,
       token: _session.token,
     );
