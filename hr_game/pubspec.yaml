@@ -10,6 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   
+  syncfusion_flutter_charts: ^27.1.53
   watch_connectivity: ^0.2.0
 
 dev_dependencies:

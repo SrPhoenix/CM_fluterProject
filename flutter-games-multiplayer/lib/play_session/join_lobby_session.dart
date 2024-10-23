@@ -47,7 +47,7 @@ class JoinLobbySession extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: 'Permanent Marker',
-                fontSize: 12,
+                fontSize: 25,
                 height: 1,
               ),
             ),

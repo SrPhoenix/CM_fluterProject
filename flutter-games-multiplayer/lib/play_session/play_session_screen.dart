@@ -17,8 +17,7 @@ import '../style/palette.dart';
 import '../style/responsive_screen.dart';
 
 class PlaySessionRoomScreen extends StatefulWidget {
-  final String playerName;
-  const PlaySessionRoomScreen({super.key, required this.playerName});
+  const PlaySessionRoomScreen({super.key});
 
   @override
   State<PlaySessionRoomScreen> createState() => _PlaySessionRoomScreen();
@@ -44,7 +43,7 @@ class _PlaySessionRoomScreen extends State<PlaySessionRoomScreen> {
             gap,
             Center(
               child: Text(
-                'Room: $controller.lobbyCode',
+                'Room: ${controller.lobbyCode.value}',
                 style: TextStyle(fontFamily: 'Permanent Marker', fontSize: 50),
               ),
             ),

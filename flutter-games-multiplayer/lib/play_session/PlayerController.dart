@@ -116,7 +116,14 @@ class PlayerController {
   }
 
   void setLobbyCode(String code) {
-    lobbyCode.value = code;
+    lobbyCode.value = code.toUpperCase();
+  }
+
+  void eventListener(){
+    _socket.onMatchPresence.listen((event) {
+      connectedOpponents.value.removeWhere((opponent) => event.leaves.any((leave) => leave.userId == opponent.userId));
+      connectedOpponents.value.addAll(event.joins);
+    });
   }
 
     /// Asynchronously loads values from the injected persistence store.
