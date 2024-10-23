@@ -12,7 +12,6 @@ import 'package:multiplayer/play_session/PlayerController.dart';
 import 'package:nakama/nakama.dart';
 import 'package:provider/provider.dart';
 
-import '../game_internals/score.dart';
 import '../style/my_button.dart';
 import '../style/palette.dart';
 import '../style/responsive_screen.dart';
@@ -50,19 +49,22 @@ class _PlaySessionRoomScreen extends State<PlaySessionRoomScreen> {
               ),
             ),
             gap,
-            ListView(
+            ListView.builder(
               shrinkWrap: true,
-              children: controller.connectedOpponents.map((opponent) {
-                return ListTile(
-                  title: Text(opponent.username),
-                );
-              }).toList(),
+                itemCount: controller.connectedOpponents.value.length,
+                itemBuilder: (context, index) {
+                  final opponent = controller.connectedOpponents.value[index];
+                  return ListTile(
+                    title: Text(opponent.username),
+                  );
+                },
             ),
           ],
         ),
         rectangularMenuArea: MyButton(
           onPressed: () {
-            GoRouter.of(context).go('/');
+            // GoRouter.of(context).go('/');
+            controller.sendMessage({"hello": "world"});
             if (controller.getHost()) {
               GoRouter.of(context).go('/play/Game');
             }else{

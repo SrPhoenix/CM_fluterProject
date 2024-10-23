@@ -15,8 +15,6 @@ import 'package:provider/provider.dart';
 
 import 'app_lifecycle/app_lifecycle.dart';
 import 'audio/audio_controller.dart';
-import 'firebase_options.dart';
-import 'player_progress/player_progress.dart';
 import 'router.dart';
 import 'settings/settings.dart';
 import 'style/palette.dart';
@@ -41,10 +39,6 @@ void main() async {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
-
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
 
   runApp(
     Provider.value(
@@ -71,7 +65,7 @@ class MyApp extends StatelessWidget {
           Provider(create: (context) => SettingsController()),
           Provider(create: (context) => PlayerController()),
           Provider(create: (context) => Palette()),
-          ChangeNotifierProvider(create: (context) => PlayerProgress()),
+          // ChangeNotifierProvider(create: (context) => PlayerProgress()),
           // Set up audio.
           ProxyProvider2<AppLifecycleStateNotifier, SettingsController,
               AudioController>(

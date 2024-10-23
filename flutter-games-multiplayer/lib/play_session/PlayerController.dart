@@ -29,8 +29,12 @@ class PlayerController {
   late final NakamaWebsocketClient _socket;
   late Match _match;
   late bool _isHost;
-  final List<UserPresence> connectedOpponents = [];
-  
+  final ValueNotifier<List<UserPresence>> connectedOpponents = ValueNotifier([]);
+  final String  _chars = 'ABCDEF1234567890';
+  Random _rnd = Random();
+
+  String getRandomString(int length) => String.fromCharCodes(Iterable.generate(
+      length, (_) => _chars.codeUnitAt(_rnd.nextInt(_chars.length))));
   // Declare a variable to store which presence is the host
   late UserPresence hostPresence;
 
@@ -47,7 +51,7 @@ class PlayerController {
   Future<void> _initialize() async {
     await _loadStateFromPersistence();
     _client = getNakamaClient(
-      host: '192.168.160.57',
+      host: '192.168.160.54',
       ssl: false,
       serverKey: 'defaultkey',
       grpcPort: 7349, // optional
@@ -62,8 +66,9 @@ class PlayerController {
   }
 
   Future<void> createMatch() async {
-    _match = await _socket.createMatch();
-    lobbyCode.value = _match.matchId;
+    getUsers();
+    lobbyCode.value = getRandomString(6);
+    _match = await _socket.createMatch(lobbyCode.value);
     if (kDebugMode) {
       print('Match created with ID: ${lobbyCode.value}');
     }
@@ -71,14 +76,12 @@ class PlayerController {
   }
 
   Future<void> joinMatch() async {
-    _match = await _socket.joinMatch( lobbyCode.value);
+    getUsers();
+    _match = await _socket.createMatch( lobbyCode.value);
     if (kDebugMode) {
       print('Joined match with ID: $lobbyCode.value');
     }
-    _socket.onMatchPresence.listen((event) {
-      connectedOpponents.removeWhere((opponent) => event.leaves.any((leave) => leave.userId == opponent.userId));
-      connectedOpponents.addAll(event.joins);
-    });
+   
     _isHost = false;
   }
   bool getHost () {
@@ -97,6 +100,13 @@ class PlayerController {
       if (kDebugMode) {
         print('Received message: ${data.data}');
       }
+    });
+  }
+
+  void getUsers() {
+     _socket.onMatchPresence.listen((event) {
+      connectedOpponents.value.removeWhere((opponent) => event.leaves.any((leave) => leave.userId == opponent.userId));
+      connectedOpponents.value.addAll(event.joins);
     });
   }
 

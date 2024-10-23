@@ -10,7 +10,6 @@ import 'package:multiplayer/play_session/PlayerController.dart';
 import 'package:provider/provider.dart';
 import 'dart:math';
 
-import '../player_progress/player_progress.dart';
 import '../style/my_button.dart';
 import '../style/palette.dart';
 import '../style/responsive_screen.dart';
