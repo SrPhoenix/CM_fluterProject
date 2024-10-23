@@ -33,7 +33,9 @@ class _PlaySessionRoomScreen extends State<PlaySessionRoomScreen> {
     final audioController = context.watch<AudioController>();
     String buttonText = controller.getHost() ? 'Start Game' : 'Ready';
     const gap = SizedBox(height: 10);
-
+    
+    controller.eventListener();
+    
     return Scaffold(
       backgroundColor: palette.backgroundPlaySession,
       body: ResponsiveScreen(
@@ -48,24 +50,33 @@ class _PlaySessionRoomScreen extends State<PlaySessionRoomScreen> {
               ),
             ),
             gap,
-            ListView.builder(
-              shrinkWrap: true,
-                itemCount: controller.connectedOpponents.value.length,
-                itemBuilder: (context, index) {
-                  final opponent = controller.connectedOpponents.value[index];
-                  return ListTile(
-                    title: Text(opponent.username),
+            Expanded(
+              child: ValueListenableBuilder<List<UserPresence>>(
+                valueListenable: controller.connectedOpponents,
+                builder: (context, opponents, _) {
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: opponents.length,
+                    itemBuilder: (context, index) {
+                      final opponent = opponents[index];
+                      return ListTile(
+                        title: Text(opponent.username),
+                      );
+                    },
                   );
                 },
+              ),
             ),
           ],
         ),
         rectangularMenuArea: MyButton(
           onPressed: () {
             // GoRouter.of(context).go('/');
+            controller.eventListener();
             controller.sendMessage({"hello": "world"});
             if (controller.getHost()) {
-              GoRouter.of(context).go('/play/Game');
+              // GoRouter.of(context).go('/play/Game');
+              controller.sendMessage({"hello": "world"});
             }else{
                 setState(() {
                 // Change the button text on button click

@@ -27,7 +27,7 @@ class SettingsController {
   ValueNotifier<bool> audioOn = ValueNotifier(true);
 
   /// The player's name. Used for things like high score lists.
-  ValueNotifier<String> playerName = ValueNotifier("Player");
+  ValueNotifier<String> playerName = ValueNotifier("Player5555");
 
   /// Whether or not the sound effects (sfx) are on.
   ValueNotifier<bool> soundsOn = ValueNotifier(true);

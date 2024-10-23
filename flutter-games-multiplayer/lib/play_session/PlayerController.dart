@@ -49,14 +49,14 @@ class PlayerController {
   }
 
   Future<void> _initialize() async {
-    await _loadStateFromPersistence();
     _client = getNakamaClient(
-      host: '192.168.160.54',
+      host: '127.0.0.1',
       ssl: false,
       serverKey: 'defaultkey',
       grpcPort: 7349, // optional
       httpPort: 7350, // optional
     );
+    print("Player Name: ${playerName.value}");
     _session = await _client.authenticateDevice(deviceId: 'AnonymousPlayer${Random().nextInt(1000)}', username: playerName.value);
     _socket = NakamaWebsocketClient.init(
       host: '127.0.0.1',
@@ -76,10 +76,10 @@ class PlayerController {
   }
 
   Future<void> joinMatch() async {
-    getUsers();
     _match = await _socket.createMatch( lobbyCode.value);
+    getUsers();
     if (kDebugMode) {
-      print('Joined match with ID: $lobbyCode.value');
+      print('Joined match with ID: ${lobbyCode.value}');
     }
    
     _isHost = false;
@@ -93,6 +93,9 @@ class PlayerController {
       opCode: Int64(1),
       data: utf8.encode(jsonEncode(data)),
     );
+    if (kDebugMode) {
+      print("Message sent: ${jsonEncode(data)}");
+    }
     }
 
   void listenForMessages() {
@@ -105,9 +108,18 @@ class PlayerController {
 
   void getUsers() {
      _socket.onMatchPresence.listen((event) {
-      connectedOpponents.value.removeWhere((opponent) => event.leaves.any((leave) => leave.userId == opponent.userId));
-      connectedOpponents.value.addAll(event.joins);
+      var temp = connectedOpponents.value;
+      temp.removeWhere((opponent) => event.leaves.any((leave) => leave.userId == opponent.userId));
+      temp.addAll(event.joins);
+      connectedOpponents.value = temp;
+      
     });
+      for (var user in connectedOpponents.value) {
+        print( "User: ${user.username}");
+        // if (user.userId == _session.userId) {
+        //   hostPresence = user;
+        // }
+      }
   }
 
   void setPlayerName(String name) {
@@ -124,15 +136,6 @@ class PlayerController {
       connectedOpponents.value.removeWhere((opponent) => event.leaves.any((leave) => leave.userId == opponent.userId));
       connectedOpponents.value.addAll(event.joins);
     });
-  }
-
-    /// Asynchronously loads values from the injected persistence store.
-  Future<void> _loadStateFromPersistence() async {
-    final loadedValues = await Future.wait([
-      _store.getPlayerName().then((value) => playerName.value = value),
-    ]);
-
-    _log.fine(() => 'Loaded settings: $loadedValues');
   }
 
 }
