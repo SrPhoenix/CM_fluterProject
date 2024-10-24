@@ -37,10 +37,10 @@ final router = GoRouter(
               pageBuilder: (context, state) {
 
                 return buildMyTransition<void>(
-                  key: const ValueKey('won'),
+                  key: const ValueKey('room'),
                   color: context.watch<Palette>().backgroundPlaySession,
                   child: PlaySessionRoomScreen(
-                    key: const Key('win game'),
+                    key: const Key('Room'),
                   ),
                 );
               },
@@ -48,14 +48,10 @@ final router = GoRouter(
             GoRoute(
               path: 'joinRoom',
               pageBuilder: (context, state) {
-                final map = state.extra! as Map<String, dynamic>;
-                final playerName = map['Name'] as String;
-
                 return buildMyTransition<void>(
                   key: const ValueKey('joinRoom'),
                   color: context.watch<Palette>().backgroundPlaySession,
                   child: JoinLobbySession(
-                    playerName: playerName,
                     key: const Key('Join Lobby'),
                   ),
                 );

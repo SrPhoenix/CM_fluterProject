@@ -2,14 +2,11 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-import 'dart:convert';
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:multiplayer/audio/audio_controller.dart';
-import 'package:multiplayer/play_session/PlayerController.dart';
-import 'package:nakama/nakama.dart';
+import 'package:multiplayer/play_session/player_controller.dart';
+import 'package:multiplayer/audio/sounds.dart';
 import 'package:provider/provider.dart';
 
 import '../style/my_button.dart';
@@ -29,9 +26,9 @@ class _PlaySessionRoomScreen extends State<PlaySessionRoomScreen> {
   @override
   Widget build(BuildContext context) {
     final palette = context.watch<Palette>();
-    final controller = context.watch<PlayerController>();
+    final playerController = context.watch<PlayerController>();
     final audioController = context.watch<AudioController>();
-    String buttonText = controller.getHost() ? 'Start Game' : 'Ready';
+    String buttonText = playerController.getHost() ? 'Start Game' : 'Ready';
     const gap = SizedBox(height: 10);
 
     return Scaffold(
@@ -43,18 +40,18 @@ class _PlaySessionRoomScreen extends State<PlaySessionRoomScreen> {
             gap,
             Center(
               child: Text(
-                'Room: ${controller.lobbyCode.value}',
+                'Room: ${playerController.lobbyCode}',
                 style: TextStyle(fontFamily: 'Permanent Marker', fontSize: 50),
               ),
             ),
             gap,
             ListView.builder(
               shrinkWrap: true,
-                itemCount: controller.connectedOpponents.value.length,
+                itemCount: playerController.connectedUsers.length,
                 itemBuilder: (context, index) {
-                  final opponent = controller.connectedOpponents.value[index];
+                  final user = playerController.connectedUsers[index];
                   return ListTile(
-                    title: Text(opponent.username),
+                    title: Text(user),
                   );
                 },
             ),
@@ -62,16 +59,17 @@ class _PlaySessionRoomScreen extends State<PlaySessionRoomScreen> {
         ),
         rectangularMenuArea: MyButton(
           onPressed: () {
+            audioController.playSfx(SfxType.buttonTap);
             // GoRouter.of(context).go('/');
-            controller.sendMessage({"hello": "world"});
-            if (controller.getHost()) {
-              GoRouter.of(context).go('/play/Game');
-            }else{
-                setState(() {
-                // Change the button text on button click
-                buttonText = 'Waiting Host';
-              });
-            }
+            // controller.sendMessage({"hello": "world"});
+            // if (controller.getHost()) {
+            //   GoRouter.of(context).go('/play/Game');
+            // }else{
+            //     setState(() {
+            //     // Change the button text on button click
+            //     buttonText = 'Waiting Host';
+            //   });
+            // }
           },
           child: Text(buttonText),
         ),

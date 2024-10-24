@@ -4,13 +4,11 @@
 
 import 'dart:developer' as dev;
 
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
-import 'package:multiplayer/play_session/PlayerController.dart';
+import 'package:multiplayer/play_session/player_controller.dart';
 import 'package:provider/provider.dart';
 
 import 'app_lifecycle/app_lifecycle.dart';
@@ -41,10 +39,7 @@ void main() async {
   ]);
 
   runApp(
-    Provider.value(
-      value: FirebaseFirestore.instance,
-      child: const MyApp(),
-    ),
+    const MyApp(),
   );
 }
 
@@ -63,7 +58,7 @@ class MyApp extends StatelessWidget {
         // See `lib/main_menu/main_menu_screen.dart` for example usage.
         providers: [
           Provider(create: (context) => SettingsController()),
-          Provider(create: (context) => PlayerController()),
+          ChangeNotifierProvider(create: (context) => PlayerController()),
           Provider(create: (context) => Palette()),
           // ChangeNotifierProvider(create: (context) => PlayerProgress()),
           // Set up audio.

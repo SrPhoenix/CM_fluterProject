@@ -6,25 +6,29 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:multiplayer/audio/audio_controller.dart';
 import 'package:multiplayer/audio/sounds.dart';
-import 'package:multiplayer/play_session/PlayerController.dart';
+import 'package:multiplayer/play_session/player_controller.dart';
 import 'package:provider/provider.dart';
-import 'dart:math';
 
 import '../style/my_button.dart';
 import '../style/palette.dart';
 import '../style/responsive_screen.dart';
 
-class CreateUserSession extends StatelessWidget {
-  CreateUserSession({super.key});
-  String playerName =  "AnonymousPlayer${Random().nextInt(1000)}";
+class CreateUserSession extends StatefulWidget {
+  const CreateUserSession({super.key});
+
+  @override
+  State<CreateUserSession> createState() => _CreateUserSession();
+}
+
+class _CreateUserSession extends State<CreateUserSession> {
   static const _gap = SizedBox(height: 60);
+  final TextEditingController textController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
     final palette = context.watch<Palette>();
-    final controller = context.watch<PlayerController>();
+    final playerController = context.watch<PlayerController>();
     final audioController = context.watch<AudioController>();
-    final TextEditingController _controller = TextEditingController(text: controller.playerName.value);
 
     return Scaffold(
       backgroundColor: palette.backgroundSettings,
@@ -43,31 +47,35 @@ class CreateUserSession extends StatelessWidget {
             ),
             _gap,
             TextField(
-              controller: _controller,
+              controller: textController,
               autofocus: true,
               maxLength: 12,
               textAlign: TextAlign.center,
               textCapitalization: TextCapitalization.words,
               textInputAction: TextInputAction.done,
-              onChanged: (value) {
-                controller.setPlayerName(value);
-              },
             ),
             _gap,
             MyButton(
               onPressed: () async {
                 audioController.playSfx(SfxType.buttonTap);
-                await controller.createMatch();
-                GoRouter.of(context).go('/play/room');
+                playerController.setUsername(textController.text);
+                await playerController.createPlayerSession();
+                await playerController.createMatch();
+                if (context.mounted) {
+                  GoRouter.of(context).go('/play/room');
+                }
               },
               child: const Text('Create Lobby'),
             ),
             _gap,
             MyButton(
-              onPressed: () {
+              onPressed: () async {
                 audioController.playSfx(SfxType.buttonTap);
-                GoRouter.of(context).go('/play/joinRoom', extra: {'Name': controller.playerName.value});
-
+                playerController.setUsername(textController.text);
+                await playerController.createPlayerSession();
+                if (context.mounted) {
+                  GoRouter.of(context).go('/play/joinRoom');
+                }
               },
               child: const Text('Join Lobby'),
             ),

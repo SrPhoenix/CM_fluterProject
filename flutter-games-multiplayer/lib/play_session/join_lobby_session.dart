@@ -6,25 +6,29 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:multiplayer/audio/audio_controller.dart';
 import 'package:multiplayer/audio/sounds.dart';
-import 'package:multiplayer/play_session/PlayerController.dart';
+import 'package:multiplayer/play_session/player_controller.dart';
 import 'package:provider/provider.dart';
-import 'dart:math';
 
 import '../style/my_button.dart';
 import '../style/palette.dart';
 import '../style/responsive_screen.dart';
 
-class JoinLobbySession extends StatelessWidget {
-  JoinLobbySession({super.key, required this.playerName});
-  String playerName ;
+class JoinLobbySession extends StatefulWidget {
+  const JoinLobbySession({super.key});
+
+  @override
+  State<JoinLobbySession> createState() => _JoinLobbySession();
+}
+
+class _JoinLobbySession extends State<JoinLobbySession> {
   static const _gap = SizedBox(height: 60);
+  final TextEditingController textController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
     final palette = context.watch<Palette>();
-    final controller = context.watch<PlayerController>();
+    final playerController = context.watch<PlayerController>();
     final audioController = context.watch<AudioController>();
-    final TextEditingController _controller = TextEditingController(text: controller.playerName.value);
 
     return Scaffold(
       backgroundColor: palette.backgroundSettings,
@@ -53,22 +57,22 @@ class JoinLobbySession extends StatelessWidget {
             ),
             _gap,
             TextField(
-              controller: _controller,
+              controller: textController,
               autofocus: true,
               maxLength: 12,
               textAlign: TextAlign.center,
               textCapitalization: TextCapitalization.words,
               textInputAction: TextInputAction.done,
-              onChanged: (value) {
-                controller.setLobbyCode(value);
-              },
             ),
             _gap,
             MyButton(
               onPressed: () async {
                 audioController.playSfx(SfxType.buttonTap);
-                await controller.joinMatch();
-                GoRouter.of(context).go('/play/Room');
+                playerController.setLobbyCode(textController.text);
+                await playerController.joinMatch();
+                if (context.mounted) {
+                  GoRouter.of(context).go('/play/Room');
+                }
               },
               child: const Text('Join'),
             ),
