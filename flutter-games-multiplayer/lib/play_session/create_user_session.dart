@@ -55,19 +55,19 @@ class _CreateUserSession extends State<CreateUserSession> {
               textInputAction: TextInputAction.done,
             ),
             _gap,
-            MyButton(
-              onPressed: () async {
-                audioController.playSfx(SfxType.buttonTap);
-                playerController.setUsername(textController.text);
-                await playerController.createPlayerSession();
-                await playerController.createMatch();
-                if (context.mounted) {
-                  GoRouter.of(context).go('/play/room');
-                }
-              },
-              child: const Text('Create Lobby'),
-            ),
-            _gap,
+            // MyButton(
+            //   onPressed: () async {
+            //     audioController.playSfx(SfxType.buttonTap);
+            //     playerController.setUsername(textController.text);
+            //     await playerController.createPlayerSession();
+            //     await playerController.createMatch();
+            //     if (context.mounted) {
+            //       GoRouter.of(context).go('/play/room');
+            //     }
+            //   },
+            //   child: const Text('Create Lobby'),
+            // ),
+            // _gap,
             MyButton(
               onPressed: () async {
                 audioController.playSfx(SfxType.buttonTap);
@@ -77,7 +77,7 @@ class _CreateUserSession extends State<CreateUserSession> {
                   GoRouter.of(context).go('/play/joinRoom');
                 }
               },
-              child: const Text('Join Lobby'),
+              child: const Text('Create User'),
             ),
             _gap,
           ],

@@ -56,6 +56,7 @@ class _JoinLobbySession extends State<JoinLobbySession> {
               ),
             ),
             _gap,
+            
             TextField(
               controller: textController,
               autofocus: true,
@@ -68,13 +69,24 @@ class _JoinLobbySession extends State<JoinLobbySession> {
             MyButton(
               onPressed: () async {
                 audioController.playSfx(SfxType.buttonTap);
+                await playerController.createMatch();
+                if (context.mounted) {
+                  GoRouter.of(context).go('/play/room');
+                }
+              },
+              child: const Text('Create Lobby'),
+            ),
+            _gap,
+            MyButton(
+              onPressed: () async {
+                audioController.playSfx(SfxType.buttonTap);
                 playerController.setLobbyCode(textController.text);
                 await playerController.joinMatch();
                 if (context.mounted) {
                   GoRouter.of(context).go('/play/Room');
                 }
               },
-              child: const Text('Join'),
+              child: const Text('Join Lobby'),
             ),
             _gap,
           ],
