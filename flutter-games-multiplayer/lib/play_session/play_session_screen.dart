@@ -30,7 +30,7 @@ class _PlaySessionRoomScreen extends State<PlaySessionRoomScreen> {
     final audioController = context.watch<AudioController>();
     String buttonText = playerController.getHost() ? 'Start Game' : 'Ready';
     const gap = SizedBox(height: 10);
-
+    
     return Scaffold(
       backgroundColor: palette.backgroundPlaySession,
       body: ResponsiveScreen(
@@ -54,7 +54,7 @@ class _PlaySessionRoomScreen extends State<PlaySessionRoomScreen> {
                     title: Text(user),
                   );
                 },
-            ),
+              ),
           ],
         ),
         rectangularMenuArea: MyButton(
