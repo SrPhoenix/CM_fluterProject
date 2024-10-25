@@ -9,7 +9,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:multiplayer/audio/audio_controller.dart';
-import 'package:multiplayer/play_session/Dash_Player_Box.dart';
 import 'package:multiplayer/play_session/player_controller.dart';
 import 'package:multiplayer/audio/sounds.dart';
 import 'package:multiplayer/style/confetti.dart';
@@ -32,22 +31,16 @@ class _GameScreen extends State<GameScreen> {
     late List<Player> players;
     late DateTime _startOfPlay;
     static const _celebrationDuration = Duration(milliseconds: 2000);
-
+    bool lost =false;
     static const _preCelebrationDuration = Duration(milliseconds: 500);
     bool _duringCelebration = false;
+    int upperBounder = 98;
+    int lowerBounder = 82;
     
-    var currentHeartRate = 0.0;
+    double currentHeartRate = 0.0;
     Timer? timer;
 
-
-
-    Future<void> _playerWon(String playerName) async {
-
-      // TODO: replace with some meaningful score for the card game
-      final score = Score(playerName, 1, DateTime.now().difference(_startOfPlay));
-
-      // final playerProgress = context.read<PlayerProgress>();
-      // playerProgress.setLevelReached(widget.level.number);
+    Future<void> _playerWon(Score score) async {
 
       // Let the player see the game just after winning for a bit.
       await Future<void>.delayed(_preCelebrationDuration);
@@ -70,23 +63,68 @@ class _GameScreen extends State<GameScreen> {
     void createDataListener() {
       var _socket = controller.getSocket();
       _socket.onMatchData.listen((data) {
-        Map<String, dynamic> message;
+      Map<String, dynamic> message;
       final content = utf8.decode(data.data);
       final jsonContent = jsonDecode(content) as Map<String, dynamic>;
+      print('Game User ${data.presence.username} sent $content with code ${data.opCode}');
+      print("Got Mssage ");
       switch (data.opCode) {
         //Someone asked who is in lobby
         case 5:
-        double score = double.parse(jsonContent["Score"].toString());
-          for (var user in players) {
-            if (user.displayName == jsonContent["Username"] && (score > 95 || score < 85)){
-              players.remove(user);
-              break;
+          if(controller.getHost()){
+            double opHeartRate = double.parse(jsonContent["Score"].toString());
+            if(currentHeartRate > upperBounder || currentHeartRate < lowerBounder){
+              lost =true;
+            }
+
+            print("Players : ${players.length}");
+            for (var user in players) {
+              if (user.displayName == jsonContent["Username"] && (opHeartRate > upperBounder || opHeartRate < lowerBounder)){
+                if(lost){
+                  var currDiff = min((currentHeartRate-upperBounder).abs(), (currentHeartRate-lowerBounder).abs());
+                  var opDiff = min((opHeartRate-upperBounder).abs(), (opHeartRate-lowerBounder).abs());
+                  print("Diffs: $currDiff,$opDiff");
+                  if (players.length == 2){
+                    print("Send winner message:");
+                    final score = Score(currDiff <= opDiff ? controller.username : user.displayName, currDiff <= opDiff ? currentHeartRate : opHeartRate, DateTime.now().difference(_startOfPlay));
+                    controller.sendMessage(6, {"Username": score.playerName, "Score" : score.score, "Duration": score.duration} );
+                    _playerWon(score);
+                  }
+                }
+                controller.sendMessage(7, {"Username": user.displayName} );
+                players.remove(user);
+                break;
+              }
+            }
+            print("Players After for: ${players.length} ");
+            if(lost && players.length == 2){
+              print("I LOST!!!!!!!!!!!!!!!");
+              print("Send winner message:");
+              final score = Score(players[0].displayName != controller.username ? players[0].displayName : players[1].displayName, 1, DateTime.now().difference(_startOfPlay));
+              controller.sendMessage(6, {"Username": score.playerName, "Score" : score.score, "Duration": score.duration} );
+              _playerWon(score);
+            }
+            print("Check Winner:");
+            if (players.length == 1){
+              print("Send winner message:");
+              final score = Score(controller.username, currentHeartRate, DateTime.now().difference(_startOfPlay));
+              controller.sendMessage(6, {"Username": score.playerName, "Score" : score.score, "Duration": score.duration} );
+              _playerWon(score);
             }
           }
-          if (players.length == 1){
-            _playerWon(controller.username);
+          break;
+        case 6:
+          if(!controller.getHost()){
+              final score = Score.DurationString(jsonContent["Username"].toString(), jsonContent["Score"] as double, jsonContent["Duration"].toString());
+            _playerWon(score);
           }
           break;
+          // U lost
+        case 7:
+            if(controller.username == jsonContent["Username"]){
+              lost =true;
+              print("I LOST!!!!!!!!!!!!!!!");
+            }
         default:
           print(() => 'Game User ${data.presence.userId} sent $content');
       }
@@ -94,21 +132,19 @@ class _GameScreen extends State<GameScreen> {
     }
 
     void sendGameMessage() {
-      double score = Random().nextDouble()* 20 + 80;
-      var message = {'Username': controller.username,"Score": score};
-      controller.sendMessage(5, message);
-      if (score > 95 || score < 85){
-        for (var user in players) {
-          if (user.displayName != controller.username){
-            _playerWon(user.displayName);
-            break;
-          }
-
+      if(!lost){
+        double score = Random().nextDouble()* 20 + 80;
+        print("Got Score: ${score}");
+        if(controller.getHost()){
+          currentHeartRate = score;
         }
-        if (players.length == 1){
-        }
+        else{
+          var message = {'Username': controller.username,"Score": score};
+          controller.sendMessage(5, message);
+      }
       }
     }
+
     @override
     void initState() {
       super.initState();
@@ -116,12 +152,14 @@ class _GameScreen extends State<GameScreen> {
       timer = Timer.periodic(Duration(seconds: 1), (Timer t) => sendGameMessage());
       controller = context.read<PlayerController>();
       players = controller.connectedUsers;
+      createDataListener();
     }
 
     @override
     void dispose() {
       timer?.cancel();
       super.dispose();
+      controller.dispose();
     }
     
   @override
@@ -138,6 +176,22 @@ class _GameScreen extends State<GameScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Serious Game!',
+                        style: TextStyle(fontFamily: 'Permanent Marker', fontSize: 30),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.door_front_door, color: Colors.red,),
+                        onPressed: () {
+                          playerController.sendMessage(3, {'Username': playerController.username});
+                          GoRouter.of(context).go('/play/joinRoom');
+                        },
+                      ),
+                    ],
+                  ),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [

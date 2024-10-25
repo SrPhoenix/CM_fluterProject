@@ -7,7 +7,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:multiplayer/audio/audio_controller.dart';
-import 'package:multiplayer/play_session/Dash_Player_Box.dart';
+import 'package:multiplayer/play_session/dash_player_box.dart';
 import 'package:multiplayer/play_session/player_controller.dart';
 import 'package:multiplayer/audio/sounds.dart';
 import 'package:provider/provider.dart';
@@ -48,14 +48,14 @@ class _PlaySessionRoomScreen extends State<PlaySessionRoomScreen> {
   void createDataListener() {
     controller.getSocket().onMatchData.listen((data) {
       final content = utf8.decode(data.data);
-      print('widget User ${data.presence.userId} sent $content with code ${data.opCode}');
+      // print('widget User ${data.presence.userId} sent $content with code ${data.opCode}');
       switch (data.opCode) {
         //Someone asked who is in lobby
         case 4:
           GoRouter.of(context).go('/play/Game');
           break;
         default:
-          print(() => 'widget User ${data.presence.username} sent $content and code ${data.opCode}');
+          // print(() => 'widget User ${data.presence.username} sent $content and code ${data.opCode}');
       }
     });
   }
@@ -64,6 +64,12 @@ class _PlaySessionRoomScreen extends State<PlaySessionRoomScreen> {
     super.initState();
     controller = context.read<PlayerController>();
     createDataListener();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    controller.dispose();
   }
   
   @override

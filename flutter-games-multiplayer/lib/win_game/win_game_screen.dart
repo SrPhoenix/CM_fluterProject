@@ -47,7 +47,7 @@ class WinGameScreen extends StatelessWidget {
             Center(
               child: Text(
                 'Score: ${score.score}\n'
-                'Time: ${score.formattedTime}',
+                'Time: ${score.duration}',
                 style: const TextStyle(
                     fontFamily: 'Permanent Marker', fontSize: 20),
               ),
@@ -56,7 +56,7 @@ class WinGameScreen extends StatelessWidget {
             MyButton(
               onPressed: () async {
                 audioController.playSfx(SfxType.buttonTap);
-                GoRouter.of(context).go('/play/game');
+                GoRouter.of(context).go('/play/room');
               },
               child: const Text('Return to Lobby'),
             ),
@@ -64,8 +64,8 @@ class WinGameScreen extends StatelessWidget {
         ),
         rectangularMenuArea: MyButton(
           onPressed: () {
-            GoRouter.of(context).go('/play/joinRoom');
             playerController.leaveMatch();
+            GoRouter.of(context).go('/play/joinRoom');
           },
           child: const Text('Leave Lobby'),
         ),

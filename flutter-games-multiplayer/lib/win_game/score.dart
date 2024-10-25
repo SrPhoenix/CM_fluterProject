@@ -6,21 +6,11 @@
 class Score {
   final double score;
 
-  final Duration duration;
+  final String duration;
 
   final String playerName;
 
-  factory Score(String playerName, double difficulty, Duration duration) {
-    // The higher the difficulty, the higher the score.
-    var score = difficulty;
-    // The lower the time to beat the level, the higher the score.
-    score *= 10000 ~/ (duration.inSeconds.abs() + 1);
-    return Score._(score, duration, playerName);
-  }
-
-  const Score._(this.score, this.duration, this.playerName);
-
-  String get formattedTime {
+  factory Score(String playerName, double score, Duration duration) {
     final buf = StringBuffer();
     if (duration.inHours > 0) {
       buf.write('${duration.inHours}');
@@ -37,9 +27,20 @@ class Score {
     buf.write((duration.inSeconds % Duration.secondsPerMinute)
         .toString()
         .padLeft(2, '0'));
-    return buf.toString();
+
+    return Score._(score, buf.toString(), playerName);
   }
 
+  // ignore: non_constant_identifier_names
+  factory Score.DurationString(String playerName, double score, String duration) {
+
+    return Score._(score, duration, playerName);
+  }
+
+
+  const Score._(this.score, this.duration, this.playerName);
+
+
   @override
-  String toString() => 'Score<$score,$formattedTime,$playerName>';
+  String toString() => 'Score<$score,$duration,$playerName>';
 }
