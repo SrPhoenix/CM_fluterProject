@@ -2,6 +2,7 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -44,9 +45,9 @@ Widget _buildRectangularMenuArea(BuildContext context, PlayerController playerCo
 
 class _PlaySessionRoomScreen extends State<PlaySessionRoomScreen> {
   late PlayerController controller;
-
+  late StreamSubscription dataListener;
   void createDataListener() {
-    controller.getSocket().onMatchData.listen((data) {
+    dataListener = controller.getSocket().onMatchData.listen((data) {
       final content = utf8.decode(data.data);
       // print('widget User ${data.presence.userId} sent $content with code ${data.opCode}');
       switch (data.opCode) {
@@ -67,9 +68,9 @@ class _PlaySessionRoomScreen extends State<PlaySessionRoomScreen> {
   }
 
   @override
-  void dispose() {
+  void dispose() async {
     super.dispose();
-    controller.dispose();
+    await dataListener.cancel();
   }
   
   @override

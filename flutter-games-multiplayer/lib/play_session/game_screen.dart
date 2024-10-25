@@ -36,6 +36,7 @@ class _GameScreen extends State<GameScreen> {
     bool _duringCelebration = false;
     int upperBounder = 98;
     int lowerBounder = 82;
+    late StreamSubscription dataListener;
     
     double currentHeartRate = 0.0;
     Timer? timer;
@@ -62,72 +63,72 @@ class _GameScreen extends State<GameScreen> {
 
     void createDataListener() {
       var _socket = controller.getSocket();
-      _socket.onMatchData.listen((data) {
-      Map<String, dynamic> message;
-      final content = utf8.decode(data.data);
-      final jsonContent = jsonDecode(content) as Map<String, dynamic>;
-      print('Game User ${data.presence.username} sent $content with code ${data.opCode}');
-      print("Got Mssage ");
-      switch (data.opCode) {
-        //Someone asked who is in lobby
-        case 5:
-          if(controller.getHost()){
-            double opHeartRate = double.parse(jsonContent["Score"].toString());
-            if(currentHeartRate > upperBounder || currentHeartRate < lowerBounder){
-              lost =true;
-            }
+      dataListener = _socket.onMatchData.listen((data) {
+        Map<String, dynamic> message;
+        final content = utf8.decode(data.data);
+        final jsonContent = jsonDecode(content) as Map<String, dynamic>;
+        print('Game User ${data.presence.username} sent $content with code ${data.opCode}');
+        print("Got Mssage ");
+        switch (data.opCode) {
+          //Someone asked who is in lobby
+          case 5:
+            if(controller.getHost()){
+              double opHeartRate = double.parse(jsonContent["Score"].toString());
+              if(currentHeartRate > upperBounder || currentHeartRate < lowerBounder){
+                lost =true;
+              }
 
-            print("Players : ${players.length}");
-            for (var user in players) {
-              if (user.displayName == jsonContent["Username"] && (opHeartRate > upperBounder || opHeartRate < lowerBounder)){
-                if(lost){
-                  var currDiff = min((currentHeartRate-upperBounder).abs(), (currentHeartRate-lowerBounder).abs());
-                  var opDiff = min((opHeartRate-upperBounder).abs(), (opHeartRate-lowerBounder).abs());
-                  print("Diffs: $currDiff,$opDiff");
-                  if (players.length == 2){
-                    print("Send winner message:");
-                    final score = Score(currDiff <= opDiff ? controller.username : user.displayName, currDiff <= opDiff ? currentHeartRate : opHeartRate, DateTime.now().difference(_startOfPlay));
-                    controller.sendMessage(6, {"Username": score.playerName, "Score" : score.score, "Duration": score.duration} );
-                    _playerWon(score);
+              print("Players : ${players.length}");
+              for (var user in players) {
+                if (user.displayName == jsonContent["Username"] && (opHeartRate > upperBounder || opHeartRate < lowerBounder)){
+                  if(lost){
+                    var currDiff = min((currentHeartRate-upperBounder).abs(), (currentHeartRate-lowerBounder).abs());
+                    var opDiff = min((opHeartRate-upperBounder).abs(), (opHeartRate-lowerBounder).abs());
+                    print("Diffs: $currDiff,$opDiff");
+                    if (players.length == 2){
+                      print("Send winner message:");
+                      final score = Score(currDiff <= opDiff ? controller.username : user.displayName, currDiff <= opDiff ? currentHeartRate : opHeartRate, DateTime.now().difference(_startOfPlay));
+                      controller.sendMessage(6, {"Username": score.playerName, "Score" : score.score, "Duration": score.duration} );
+                      _playerWon(score);
+                    }
                   }
+                  controller.sendMessage(7, {"Username": user.displayName} );
+                  players.remove(user);
+                  break;
                 }
-                controller.sendMessage(7, {"Username": user.displayName} );
-                players.remove(user);
-                break;
+              }
+              print("Players After for: ${players.length} ");
+              if(lost && players.length == 2){
+                print("I LOST!!!!!!!!!!!!!!!");
+                print("Send winner message:");
+                final score = Score(players[0].displayName != controller.username ? players[0].displayName : players[1].displayName, opHeartRate, DateTime.now().difference(_startOfPlay));
+                controller.sendMessage(6, {"Username": score.playerName, "Score" : score.score, "Duration": score.duration} );
+                _playerWon(score);
+              }
+              print("Check Winner:");
+              if (players.length == 1){
+                print("Send winner message:");
+                final score = Score(controller.username, currentHeartRate, DateTime.now().difference(_startOfPlay));
+                controller.sendMessage(6, {"Username": score.playerName, "Score" : score.score, "Duration": score.duration} );
+                _playerWon(score);
               }
             }
-            print("Players After for: ${players.length} ");
-            if(lost && players.length == 2){
-              print("I LOST!!!!!!!!!!!!!!!");
-              print("Send winner message:");
-              final score = Score(players[0].displayName != controller.username ? players[0].displayName : players[1].displayName, 1, DateTime.now().difference(_startOfPlay));
-              controller.sendMessage(6, {"Username": score.playerName, "Score" : score.score, "Duration": score.duration} );
+            break;
+          case 6:
+            if(!controller.getHost()){
+                final score = Score.DurationString(jsonContent["Username"].toString(), jsonContent["Score"] as double, jsonContent["Duration"].toString());
               _playerWon(score);
             }
-            print("Check Winner:");
-            if (players.length == 1){
-              print("Send winner message:");
-              final score = Score(controller.username, currentHeartRate, DateTime.now().difference(_startOfPlay));
-              controller.sendMessage(6, {"Username": score.playerName, "Score" : score.score, "Duration": score.duration} );
-              _playerWon(score);
-            }
-          }
-          break;
-        case 6:
-          if(!controller.getHost()){
-              final score = Score.DurationString(jsonContent["Username"].toString(), jsonContent["Score"] as double, jsonContent["Duration"].toString());
-            _playerWon(score);
-          }
-          break;
-          // U lost
-        case 7:
-            if(controller.username == jsonContent["Username"]){
-              lost =true;
-              print("I LOST!!!!!!!!!!!!!!!");
-            }
-        default:
-          print(() => 'Game User ${data.presence.userId} sent $content');
-      }
+            break;
+            // U lost
+          case 7:
+              if(controller.username == jsonContent["Username"]){
+                lost =true;
+                print("I LOST!!!!!!!!!!!!!!!");
+              }
+          default:
+            print(() => 'Game User ${data.presence.userId} sent $content');
+        }
       });
     }
 
@@ -156,10 +157,11 @@ class _GameScreen extends State<GameScreen> {
     }
 
     @override
-    void dispose() {
+    void dispose() async {
       timer?.cancel();
       super.dispose();
-      controller.dispose();
+      await dataListener.cancel();
+
     }
     
   @override

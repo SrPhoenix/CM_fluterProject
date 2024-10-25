@@ -146,6 +146,12 @@ class PlayerController extends ChangeNotifier {
           //Leave match
         case 3:
           connectedUsers.removeWhere((element) => element.displayName == jsonContent["Username"]);
+          if(jsonContent["IsHost"].toString().toLowerCase() == 'true'){
+            connectedUsers.sort((a, b) => a.displayName.compareTo(b.displayName));
+            if(connectedUsers[0].displayName == username){
+              _isHost = true;
+            }
+          }
           notifyListeners();
           break;
           // notify players that the match is going to start
@@ -161,14 +167,14 @@ class PlayerController extends ChangeNotifier {
   }
 
   Future<void> leaveMatch() async {
-    var message = {'Username': username}; 
+    var message = {'Username': username, "IsHost": _isHost}; 
     sendMessage(3, message);
     
     await _socket.leaveMatch(_match.matchId);
     if (kDebugMode) {
       print('Left match with id: ${_match.matchId}');
     }
-    await presenceSubscription.cancel();
+    // await presenceSubscription.cancel();
     await dataSubscription.cancel();
 
     connectedUsers = [];
