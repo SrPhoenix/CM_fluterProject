@@ -23,7 +23,7 @@ plugins {
 // }
 
 android {
-    namespace = "com.example.hr_game"
+    namespace = "com.example.card"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = "25.1.8937393"
 
