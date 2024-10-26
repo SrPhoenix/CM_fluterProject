@@ -13,6 +13,8 @@ dependencies:
   flutter:
     sdk: flutter
 
+  syncfusion_flutter_charts: ^27.1.53
+  watch_connectivity: ^0.2.0
   async: ^2.11.0
   audioplayers: ^6.0.0
   go_router: ^14.0.0
