@@ -70,6 +70,15 @@ class _GameScreen extends State<GameScreen> {
         print('Game User ${data.presence.username} sent $content with code ${data.opCode}');
         print("Got Mssage ");
         switch (data.opCode) {
+          case 3:
+            print("game player leaved: $jsonContent");
+            players.removeWhere((element) => element.displayName == jsonContent["Username"]);
+            // if(players.length == 1){
+            //   print("Send winner message:");
+            //   final score = Score(controller.username, currentHeartRate, DateTime.now().difference(_startOfPlay));
+            //   _playerWon(score);
+            // }
+              break;
           //Someone asked who is in lobby
           case 5:
             if(controller.getHost()){
@@ -86,7 +95,7 @@ class _GameScreen extends State<GameScreen> {
                     var opDiff = min((opHeartRate-upperBounder).abs(), (opHeartRate-lowerBounder).abs());
                     print("Diffs: $currDiff,$opDiff");
                     if (players.length == 2){
-                      print("Send winner message:");
+                      print("Send winner message (tie):");
                       final score = Score(currDiff <= opDiff ? controller.username : user.displayName, currDiff <= opDiff ? currentHeartRate : opHeartRate, DateTime.now().difference(_startOfPlay));
                       controller.sendMessage(6, {"Username": score.playerName, "Score" : score.score, "Duration": score.duration} );
                       _playerWon(score);
@@ -99,15 +108,14 @@ class _GameScreen extends State<GameScreen> {
               }
               print("Players After for: ${players.length} ");
               if(lost && players.length == 2){
-                print("I LOST!!!!!!!!!!!!!!!");
-                print("Send winner message:");
+                print("Send winner message (host lost):");
                 final score = Score(players[0].displayName != controller.username ? players[0].displayName : players[1].displayName, opHeartRate, DateTime.now().difference(_startOfPlay));
                 controller.sendMessage(6, {"Username": score.playerName, "Score" : score.score, "Duration": score.duration} );
                 _playerWon(score);
               }
               print("Check Winner:");
               if (players.length == 1){
-                print("Send winner message:");
+                print("Send winner message (host won):");
                 final score = Score(controller.username, currentHeartRate, DateTime.now().difference(_startOfPlay));
                 controller.sendMessage(6, {"Username": score.playerName, "Score" : score.score, "Duration": score.duration} );
                 _playerWon(score);
@@ -116,6 +124,7 @@ class _GameScreen extends State<GameScreen> {
             break;
           case 6:
             if(!controller.getHost()){
+                print("Send winner message (some one won):");
                 final score = Score.DurationString(jsonContent["Username"].toString(), jsonContent["Score"] as double, jsonContent["Duration"].toString());
               _playerWon(score);
             }
@@ -133,6 +142,11 @@ class _GameScreen extends State<GameScreen> {
     }
 
     void sendGameMessage() {
+      if(players.length == 1){
+          print("Send winner message (single guy):");
+          final score = Score(controller.username, currentHeartRate, DateTime.now().difference(_startOfPlay));
+          _playerWon(score);
+        }
       if(!lost){
         double score = Random().nextDouble()* 20 + 80;
         print("Got Score: ${score}");
