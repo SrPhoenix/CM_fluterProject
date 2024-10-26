@@ -5,6 +5,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
+import 'package:syncfusion_flutter_charts/charts.dart';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -28,6 +29,7 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreen extends State<GameScreen> {
     late PlayerController controller;
+    ChartSeriesController? _chartSeriesController;
     late List<Player> players;
     late DateTime _startOfPlay;
     static const _celebrationDuration = Duration(milliseconds: 2000);
@@ -37,9 +39,21 @@ class _GameScreen extends State<GameScreen> {
     int upperBounder = 98;
     int lowerBounder = 82;
     late StreamSubscription dataListener;
-    
+
+    Map<String, List<double>> heartRateData = {};
+
     double currentHeartRate = 0.0;
-    Timer? timer;
+
+      @override
+  void initState() {
+    super.initState();
+    controller = context.read<PlayerController>();
+    _startOfPlay = DateTime.now();
+    createdDataListener();
+    for (Player user in controller.connectedUsers){
+      heartRateData[user.displayName] = [];
+    }
+  }
 
     Future<void> _playerWon(Score score) async {
 
@@ -61,121 +75,32 @@ class _GameScreen extends State<GameScreen> {
       GoRouter.of(context).go('/play/won', extra: {'score': score});
     }
 
-    // void createDataListener() {
-    //   var _socket = controller.getSocket();
-    //   dataListener = _socket.onMatchData.listen((data) {
-    //     Map<String, dynamic> message;
-    //     final content = utf8.decode(data.data);
-    //     final jsonContent = jsonDecode(content) as Map<String, dynamic>;
-    //     print('Game User ${data.presence.username} sent $content with code ${data.opCode}');
-    //     print("Got Mssage ");
-    //     switch (data.opCode) {
-    //       case 3:
-    //         print("game player leaved: $jsonContent");
-    //         players.removeWhere((element) => element.displayName == jsonContent["Username"]);
-    //         // if(players.length == 1){
-    //         //   print("Send winner message:");
-    //         //   final score = Score(controller.username, currentHeartRate, DateTime.now().difference(_startOfPlay));
-    //         //   _playerWon(score);
-    //         // }
-    //           break;
-    //       //Someone asked who is in lobby
-    //       case 5:
-    //         if(controller.getHost()){
-    //           double opHeartRate = double.parse(jsonContent["Score"].toString());
-    //           if(currentHeartRate > upperBounder || currentHeartRate < lowerBounder){
-    //             lost =true;
-    //           }
-
-    //           print("Players : ${players.length}");
-    //           for (var user in players) {
-    //             if (user.displayName == jsonContent["Username"] && (opHeartRate > upperBounder || opHeartRate < lowerBounder)){
-    //               if(lost){
-    //                 var currDiff = min((currentHeartRate-upperBounder).abs(), (currentHeartRate-lowerBounder).abs());
-    //                 var opDiff = min((opHeartRate-upperBounder).abs(), (opHeartRate-lowerBounder).abs());
-    //                 print("Diffs: $currDiff,$opDiff");
-    //                 if (players.length == 2){
-    //                   print("Send winner message (tie):");
-    //                   final score = Score(currDiff <= opDiff ? controller.username : user.displayName, currDiff <= opDiff ? currentHeartRate : opHeartRate, DateTime.now().difference(_startOfPlay));
-    //                   controller.sendMessage(6, {"Username": score.playerName, "Score" : score.score, "Duration": score.duration} );
-    //                   _playerWon(score);
-    //                 }
-    //               }
-    //               controller.sendMessage(7, {"Username": user.displayName} );
-    //               players.remove(user);
-    //               break;
-    //             }
-    //           }
-    //           print("Players After for: ${players.length} ");
-    //           if(lost && players.length == 2){
-    //             print("Send winner message (host lost):");
-    //             final score = Score(players[0].displayName != controller.username ? players[0].displayName : players[1].displayName, opHeartRate, DateTime.now().difference(_startOfPlay));
-    //             controller.sendMessage(6, {"Username": score.playerName, "Score" : score.score, "Duration": score.duration} );
-    //             _playerWon(score);
-    //           }
-    //           print("Check Winner:");
-    //           if (players.length == 1){
-    //             print("Send winner message (host won):");
-    //             final score = Score(controller.username, currentHeartRate, DateTime.now().difference(_startOfPlay));
-    //             controller.sendMessage(6, {"Username": score.playerName, "Score" : score.score, "Duration": score.duration} );
-    //             _playerWon(score);
-    //           }
-    //         }
-    //         break;
-    //       case 6:
-    //         if(!controller.getHost()){
-    //             print("Send winner message (some one won):");
-    //             final score = Score.DurationString(jsonContent["Username"].toString(), jsonContent["Score"] as double, jsonContent["Duration"].toString());
-    //           _playerWon(score);
-    //         }
-    //         break;
-    //         // U lost
-    //       case 7:
-    //           if(controller.username == jsonContent["Username"]){
-    //             lost =true;
-    //             print("I LOST!!!!!!!!!!!!!!!");
-    //           }
-    //       default:
-    //         print(() => 'Game User ${data.presence.userId} sent $content');
-    //     }
-    //   });
-    // }
-
-    void sendGameMessage() {
-      if(players.length == 1){
-          print("Send winner message (single guy):");
-          final score = Score(controller.username, currentHeartRate, DateTime.now().difference(_startOfPlay));
-          _playerWon(score);
+    void createdDataListener() {
+      dataListener = controller.uiStream.listen((data) {
+        var jsonData = jsonDecode(data);
+        if (jsonData["Command"] == "HEART_RATE") {
+          var username = jsonData["Username"] as String;
+          var heartRate = double.parse(jsonData["HeartRate"] as String);
+          heartRateData[username]!.add(heartRate);
+          setState(() {
+            currentHeartRate = heartRate;
+          });
+          if (heartRateData[username]!.length == 20) {
+            heartRateData[username]!.removeAt(0);
+            _chartSeriesController?.updateDataSource(
+                addedDataIndex: heartRateData.length - 1, removedDataIndex: 0);
+          }
+        }else if(jsonData["Command"] == "END_GAME"){
+          Duration duration = Duration(seconds: int.parse(jsonData["Duration"] as String));
+          _playerWon(Score(jsonData["Username"] as String,duration));
         }
-      if(!lost){
-        double score = Random().nextDouble()* 20 + 80;
-        print("Got Score: ${score}");
-        if(controller.getHost()){
-          currentHeartRate = score;
-        }
-        else{
-          var message = {'Username': controller.username,"Score": score};
-          controller.sendMessage(5, message);
-      }
-      }
-    }
-
-    @override
-    void initState() {
-      super.initState();
-      _startOfPlay = DateTime.now();
-      timer = Timer.periodic(Duration(seconds: 1), (Timer t) => sendGameMessage());
-      controller = context.read<PlayerController>();
-      players = controller.connectedUsers;
-      // createDataListener();
-    }
+    });
+  }
 
     @override
     void dispose() async {
-      timer?.cancel();
       super.dispose();
       await dataListener.cancel();
-
     }
     
   @override
@@ -211,6 +136,43 @@ class _GameScreen extends State<GameScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
+                      SfCartesianChart(
+                    plotAreaBorderWidth: 0,
+                    primaryXAxis: const NumericAxis(
+                      isVisible: false,
+                    ),
+                    primaryYAxis: NumericAxis(
+                      majorGridLines: const MajorGridLines(width: 0),
+                      axisLine: const AxisLine(width: 0),
+                      interval: 10,
+                      minimum: controller.getStartHeartRateOfUsername(controller.username) - 10,
+                      maximum: controller.getStartHeartRateOfUsername(controller.username) + 10,
+                      plotBands: [
+                        PlotBand(
+                          start: controller.getStartHeartRateOfUsername(controller.username) - 10,
+                          end: controller.getStartHeartRateOfUsername(controller.username) - 10,
+                          borderColor: Colors.red,
+                          borderWidth: 4,
+                        ),
+                        PlotBand(
+                          start: controller.getStartHeartRateOfUsername(controller.username) + 10,
+                          end: controller.getStartHeartRateOfUsername(controller.username) + 10,
+                          borderColor: Colors.red,
+                          borderWidth: 4,
+                        ),
+                      ],
+                    ),
+                    series: <LineSeries<double, int>>[
+                      LineSeries<double, int>(
+                        onRendererCreated: (ChartSeriesController controller) {
+                          _chartSeriesController = controller;
+                        },
+                        dataSource: heartRateData[controller.username],
+                        xValueMapper: (_, index) => index,
+                        yValueMapper: (heartRate, _) => heartRate,
+                      ),
+                    ],
+                  ),
                       Text(currentHeartRate != 0
                       ? currentHeartRate.toString()
                                   : "--",

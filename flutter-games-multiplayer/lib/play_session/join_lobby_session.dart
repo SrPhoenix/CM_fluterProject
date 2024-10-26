@@ -59,7 +59,6 @@ class _JoinLobbySession extends State<JoinLobbySession> {
             
             TextField(
               controller: textController,
-              autofocus: true,
               maxLength: 12,
               textAlign: TextAlign.center,
               textCapitalization: TextCapitalization.words,

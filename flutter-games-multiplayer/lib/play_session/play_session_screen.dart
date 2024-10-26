@@ -3,6 +3,7 @@
 // BSD-style license that can be found in the LICENSE file.
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -34,6 +35,7 @@ Widget _buildRectangularMenuArea(
         audioController.playSfx(SfxType.buttonTap);
         playerController
             .sendMessage(4, {'Username': playerController.username});
+        playerController.startGame();
         GoRouter.of(context).go('/play/Game');
       },
       child: Text(buttonText),
@@ -57,8 +59,11 @@ class _PlaySessionRoomScreen extends State<PlaySessionRoomScreen> {
 
   void createdDataListener() {
     dataListener = controller.uiStream.listen((data) {
-      if (data == "GAME_STARTED") {
-        GoRouter.of(context).go('/play/Game');
+      var jsonData = jsonDecode(data);
+      if (jsonData["Command"] == "GAME_STARTED") {
+        if(mounted) {
+          GoRouter.of(context).go('/play/Game');
+        }
       }
     });
   }

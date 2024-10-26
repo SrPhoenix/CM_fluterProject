@@ -5,9 +5,11 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:nakama/nakama.dart';
+import 'package:watch_connectivity/watch_connectivity.dart';
 import 'dart:math';
 import 'dart:async';
 
@@ -19,7 +21,7 @@ import '../settings/persistence/settings_persistence.dart';
 class PlayerController extends ChangeNotifier {
   static final _log = Logger('PlayerController');
   // static final _host = "192.168.160.57";
-  static final _host = "127.0.0.1";
+  static final _host = "192.168.1.92";
   static const String _chars = 'ABCDEF1234567890';
   final Random _rnd = Random();
 
@@ -39,7 +41,17 @@ class PlayerController extends ChangeNotifier {
   late UserPresence hostPresence;
   late StreamSubscription<MatchData> dataSubscription;
 
-  final StreamController<String> _uiStreamController = StreamController<String>.broadcast();
+  Map<String, List<double>> heartRateFullData = {};
+  static const double threshold = 10;
+  late DateTime _startOfPlay;
+
+  final _watch = WatchConnectivity();
+  var startHeartRate = 0.0;
+  var currentHeartRate = 0.0;
+  late StreamSubscription<Map<String, dynamic>> watchMessages;
+
+  final StreamController<String> _uiStreamController =
+      StreamController<String>.broadcast();
   Stream<String> get uiStream => _uiStreamController.stream;
 
   String getRandomString(int length) => String.fromCharCodes(Iterable.generate(
@@ -48,6 +60,7 @@ class PlayerController extends ChangeNotifier {
   PlayerController({SettingsPersistence? store})
       : _store = store ?? LocalStorageSettingsPersistence() {
     connectToNakama();
+    createWatchListener();
   }
 
   Future<void> connectToNakama() async {
@@ -89,7 +102,7 @@ class PlayerController extends ChangeNotifier {
     }
 
     _isHost = true;
-    connectedUsers.add(Player(isMe:true,isHost:  true, displayName: username));
+    connectedUsers.add(Player(isMe: true, isHost: true, displayName: username));
 
     Map<String, dynamic> message = {'Username': username, "IsHost": true};
     sendMessage(1, message);
@@ -102,7 +115,8 @@ class PlayerController extends ChangeNotifier {
       print('Joined match with ID: $lobbyCode');
     }
     _isHost = false;
-    connectedUsers.add(Player(isMe:true, isHost:false, displayName: username));
+    connectedUsers
+        .add(Player(isMe: true, isHost: false, displayName: username));
 
     _isHost = false;
 
@@ -115,16 +129,23 @@ class PlayerController extends ChangeNotifier {
       Map<String, dynamic> message;
       final content = utf8.decode(data.data);
       if (kDebugMode) {
-        print('User ${data.presence.userId} sent $content with code ${data.opCode}');
+        print(
+            'User ${data.presence.userId} sent $content with code ${data.opCode}');
       }
       final jsonContent = jsonDecode(content) as Map<String, dynamic>;
       switch (data.opCode) {
         //Someone asked who is in lobby
         case 1:
-          message = {'Username': username, "IsHost": _isHost}; 
+          message = {'Username': username, "IsHost": _isHost};
           for (var user in connectedUsers) {
-            if (user.displayName != jsonContent["Username"] ){
-              connectedUsers.add(Player(isMe:false, isHost: jsonContent["IsHost"].toString().toLowerCase() == 'true', displayName: jsonContent["Username"] as String) );
+            if (user.displayName != jsonContent["Username"]) {
+              connectedUsers.add(
+                Player(
+                    isMe: false,
+                    isHost: jsonContent["IsHost"].toString().toLowerCase() ==
+                        'true',
+                    displayName: jsonContent["Username"] as String),
+              );
               notifyListeners();
             }
           }
@@ -132,39 +153,140 @@ class PlayerController extends ChangeNotifier {
           break;
         //Someone told me it is in the lobby
         case 2:
-          connectedUsers.add(Player(isMe:false, isHost: jsonContent["IsHost"].toString().toLowerCase() == 'true', displayName: jsonContent["Username"] as String) );
+          connectedUsers.add(Player(
+            isMe: false,
+            isHost: jsonContent["IsHost"].toString().toLowerCase() == 'true',
+            displayName: jsonContent["Username"] as String,
+          ));
           notifyListeners();
         //Leave match
         case 3:
-          connectedUsers.removeWhere((element) => element.displayName == jsonContent["Username"]);
-          if(jsonContent["IsHost"].toString().toLowerCase() == 'true'){
-            connectedUsers.sort((a, b) => a.displayName.compareTo(b.displayName));
+          connectedUsers.removeWhere(
+              (element) => element.displayName == jsonContent["Username"]);
+          if (jsonContent["IsHost"].toString().toLowerCase() == 'true') {
+            connectedUsers
+                .sort((a, b) => a.displayName.compareTo(b.displayName));
             connectedUsers[0].isHost = true;
             print(connectedUsers[0].displayName);
-            if(connectedUsers[0].displayName == username){
+            if (connectedUsers[0].displayName == username) {
               _isHost = true;
             }
           }
           notifyListeners();
           break;
-        //Game as started
+        //Game has started
         case 4:
-          _uiStreamController.sink.add("GAME_STARTED");
+          _uiStreamController.sink.add("{'Command':'GAME_STARTED'}");
+          //start game on watch
+          startGame();
+          break;
+        //HeartRate data from other people
+        case 5:
+          var username = jsonContent["Username"] as String;
+          var heartRate = jsonContent["HeartRate"] as double;
+          _uiStreamController.sink.add(
+              "{'Command':'HEART_RATE','Username':'$username','HeartRate':'$heartRate'}");
+          if (heartRateFullData.keys.contains(username)) {
+            heartRateFullData[username]!.add(heartRate);
+          } else {
+            heartRateFullData[username] = [heartRate];
+          }
+          if (_isHost) {
+            hasGameEnded(username, heartRate);
+          }
+          break;
+        //Game ended, user xxx has lost
+        case 6:
+          endGame(jsonContent["Username"] as String, jsonContent["Duration"] as int);
+          break;
         default:
-          _log.fine(() => 'controller User ${data.presence.username} sent $content and code ${data.opCode}');
+          _log.fine(() =>
+              'User ${data.presence.username} sent $content and code ${data.opCode}');
       }
     });
   }
 
+  void createWatchListener() {
+    _watch.messageStream.listen((e) {
+      // print("Whole: $e");
+      // print("Bool: ${e.containsKey("HeartRate")}");
+      // print("Type: ${e["HeartRate"].runtimeType}");
+      // print("Value: ${e["HeartRate"]}");
+      // print("Len Data: ${hearRateData.length}");
+      // print("Len FullData: ${hearRateFullData.length}");
+      var heartRate = e["HeartRate"] as double;
+      if (heartRate != 0.0) {
+        if (startHeartRate == 0) {
+          startHeartRate = heartRate;
+        }
+        currentHeartRate = heartRate;
+        if (heartRateFullData.keys.contains(username)) {
+          heartRateFullData[username]!.add(heartRate);
+        } else {
+          heartRateFullData[username] = [heartRate];
+        }
+        _uiStreamController.sink.add(
+            '{"Command":"HEART_RATE","Username":"$username","HeartRate":"$heartRate"}');
+        if (_isHost) {
+          if(hasGameEnded(username, heartRate)){
+            endGame(username, DateTime.now().difference(_startOfPlay).inSeconds);
+          }
+        }
+      }
+    });
+  }
+
+  void startGame() {
+    var message = {'Command': 'START_GAME'};
+    _watch.sendMessage(message);
+    _startOfPlay = DateTime.now();
+    for (Player user in connectedUsers){
+      heartRateFullData[user.displayName] = [];
+    }
+  }
+
+  bool hasGameEnded(String username, double heartRate) {
+    print("Data -> Username $username HeartRate $heartRate");
+    if (heartRateFullData[username]![0] + threshold < heartRate ||
+        heartRateFullData[username]![0] - threshold > heartRate) {
+      print("User $username has lost");
+      return true;
+    }
+    return false;
+  }
+
+  void endGame(String username,int duration) {
+    var message = {'Command': 'END_GAME'};
+    Player? winningPlayer = null;
+    _watch.sendMessage(message);
+    for (Player user in connectedUsers){
+      if(user.displayName != username){
+        winningPlayer == user;
+      }
+    }
+    
+    winningPlayer ??= Player(isMe: false, isHost: false, displayName: "No one");
+
+    sendMessage(6, {'Username':winningPlayer!.displayName,'Duration':duration});
+    _uiStreamController.sink.add(
+            '{"Command":"END_GAME","Username":"${winningPlayer.displayName}","Duration":"$duration"}');
+  }
+
+  double getStartHeartRateOfUsername(String username){
+    if(heartRateFullData[username]!.isEmpty){
+      return 0;
+    }
+    return heartRateFullData[username]![0];
+  }
 
   bool getHost() {
     return _isHost;
   }
 
   Future<void> leaveMatch() async {
-    var message = {'Username': username, "IsHost": _isHost}; 
+    var message = {'Username': username, "IsHost": _isHost};
     sendMessage(3, message);
-    
+
     await _socket.leaveMatch(_match.matchId);
     if (kDebugMode) {
       print('Left match with id: ${_match.matchId}');
@@ -208,5 +330,5 @@ class Player {
   final bool isMe;
   bool isHost;
 
-  Player( {required this.isMe, required this.isHost, required this.displayName});
+  Player({required this.isMe, required this.isHost, required this.displayName});
 }

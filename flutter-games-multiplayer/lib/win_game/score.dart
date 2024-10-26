@@ -4,13 +4,12 @@
 
 /// Encapsulates a score and the arithmetic to compute it.
 class Score {
-  final double score;
 
   final String duration;
 
   final String playerName;
 
-  factory Score(String playerName, double score, Duration duration) {
+  factory Score(String playerName, Duration duration) {
     final buf = StringBuffer();
     if (duration.inHours > 0) {
       buf.write('${duration.inHours}');
@@ -28,19 +27,19 @@ class Score {
         .toString()
         .padLeft(2, '0'));
 
-    return Score._(score, buf.toString(), playerName);
+    return Score._( buf.toString(), playerName);
   }
 
   // ignore: non_constant_identifier_names
   factory Score.DurationString(String playerName, double score, String duration) {
 
-    return Score._(score, duration, playerName);
+    return Score._(duration, playerName);
   }
 
 
-  const Score._(this.score, this.duration, this.playerName);
+  const Score._(this.duration, this.playerName);
 
 
   @override
-  String toString() => 'Score<$score,$duration,$playerName>';
+  String toString() => 'Score<$duration,$playerName>';
 }
