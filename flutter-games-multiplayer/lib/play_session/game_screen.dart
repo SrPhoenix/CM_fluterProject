@@ -28,191 +28,270 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreen extends State<GameScreen> {
-    late PlayerController controller;
-    ChartSeriesController? _chartSeriesController;
-    late List<Player> players;
-    late DateTime _startOfPlay;
-    static const _celebrationDuration = Duration(milliseconds: 2000);
-    bool lost =false;
-    static const _preCelebrationDuration = Duration(milliseconds: 500);
-    bool _duringCelebration = false;
-    int upperBounder = 98;
-    int lowerBounder = 82;
-    late StreamSubscription dataListener;
+  late PlayerController controller;
+  ChartSeriesController? _chartSeriesController;
+  static const _celebrationDuration = Duration(milliseconds: 2000);
+  bool lost = false;
+  static const _preCelebrationDuration = Duration(milliseconds: 500);
+  int upperBounder = 98;
+  int lowerBounder = 82;
+  late StreamSubscription dataListener;
+  late String myUsername;
+  late String opponentUsername;
 
-    Map<String, List<double>> heartRateData = {};
+  Map<String, List<double>> heartRateData = {};
 
-    double currentHeartRate = 0.0;
+  double currentHeartRate = 0.0;
 
-      @override
+  @override
   void initState() {
     super.initState();
     controller = context.read<PlayerController>();
-    _startOfPlay = DateTime.now();
     createdDataListener();
-    for (Player user in controller.connectedUsers){
+    myUsername = controller.username;
+    for (Player user in controller.connectedUsers) {
       heartRateData[user.displayName] = [];
+      if (user.displayName != myUsername) {
+        opponentUsername = user.displayName;
+      }
     }
   }
 
-    Future<void> _playerWon(Score score) async {
+  Future<void> _playerWon(Score score) async {
+    // Let the player see the game just after winning for a bit.
+    await Future<void>.delayed(_preCelebrationDuration);
+    if (!mounted) return;
 
-      // Let the player see the game just after winning for a bit.
-      await Future<void>.delayed(_preCelebrationDuration);
-      if (!mounted) return;
+    final audioController = context.read<AudioController>();
+    audioController.playSfx(SfxType.congrats);
 
-      setState(() {
-        _duringCelebration = true;
-      });
+    /// Give the player some time to see the celebration animation.
+    await Future<void>.delayed(_celebrationDuration);
+    if (!mounted) return;
 
-      final audioController = context.read<AudioController>();
-      audioController.playSfx(SfxType.congrats);
+    GoRouter.of(context).go('/play/won', extra: {'score': score});
+  }
 
-      /// Give the player some time to see the celebration animation.
-      await Future<void>.delayed(_celebrationDuration);
-      if (!mounted) return;
-
-      GoRouter.of(context).go('/play/won', extra: {'score': score});
-    }
-
-    void createdDataListener() {
-      dataListener = controller.uiStream.listen((data) {
-        var jsonData = jsonDecode(data);
-        if (jsonData["Command"] == "HEART_RATE") {
-          var username = jsonData["Username"] as String;
-          var heartRate = double.parse(jsonData["HeartRate"] as String);
-          heartRateData[username]!.add(heartRate);
-          setState(() {
-            currentHeartRate = heartRate;
-          });
-          if (heartRateData[username]!.length == 20) {
-            heartRateData[username]!.removeAt(0);
-            _chartSeriesController?.updateDataSource(
-                addedDataIndex: heartRateData.length - 1, removedDataIndex: 0);
-          }
-        }else if(jsonData["Command"] == "END_GAME"){
-          Duration duration = Duration(seconds: int.parse(jsonData["Duration"] as String));
-          _playerWon(Score(jsonData["Username"] as String,duration));
+  void createdDataListener() {
+    dataListener = controller.uiStream.listen((data) {
+      var jsonData = jsonDecode(data);
+      if (jsonData["Command"] == "HEART_RATE") {
+        var username = jsonData["Username"] as String;
+        var heartRate = double.parse(jsonData["HeartRate"] as String);
+        heartRateData[username]!.add(heartRate);
+        setState(() {
+          currentHeartRate = heartRate;
+        });
+        if (heartRateData[username]!.length == 20) {
+          heartRateData[username]!.removeAt(0);
+          _chartSeriesController?.updateDataSource(
+              addedDataIndex: heartRateData.length - 1, removedDataIndex: 0);
         }
+      } else if (jsonData["Command"] == "END_GAME") {
+        Duration duration =
+            Duration(seconds: int.parse(jsonData["Duration"] as String));
+        _playerWon(Score(jsonData["Username"] as String, duration));
+      }
     });
   }
 
-    @override
-    void dispose() async {
-      super.dispose();
-      await dataListener.cancel();
-    }
-    
+  @override
+  void dispose() async {
+    super.dispose();
+    await dataListener.cancel();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final palette = context.watch<Palette>();
     final playerController = context.watch<PlayerController>();
-    final audioController = context.watch<AudioController>();
-    const gap = SizedBox(height: 10);
     return Scaffold(
-        body: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: SafeArea(
-              child: Column(
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: SafeArea(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Serious Game!',
-                        style: TextStyle(fontFamily: 'Permanent Marker', fontSize: 30),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.door_front_door, color: Colors.red,),
-                        onPressed: () {
-                          playerController.leaveMatch();
-                          GoRouter.of(context).go('/play/joinRoom');
-                        },
-                      ),
-                    ],
+                  Text(
+                    'Serious Game!',
+                    style:
+                        TextStyle(fontFamily: 'Permanent Marker', fontSize: 30),
                   ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SfCartesianChart(
-                    plotAreaBorderWidth: 0,
-                    primaryXAxis: const NumericAxis(
-                      isVisible: false,
+                  IconButton(
+                    icon: Icon(
+                      Icons.door_front_door,
+                      color: Colors.red,
                     ),
-                    primaryYAxis: NumericAxis(
-                      majorGridLines: const MajorGridLines(width: 0),
-                      axisLine: const AxisLine(width: 0),
-                      interval: 10,
-                      minimum: controller.getStartHeartRateOfUsername(controller.username) - 10,
-                      maximum: controller.getStartHeartRateOfUsername(controller.username) + 10,
-                      plotBands: [
-                        PlotBand(
-                          start: controller.getStartHeartRateOfUsername(controller.username) - 10,
-                          end: controller.getStartHeartRateOfUsername(controller.username) - 10,
-                          borderColor: Colors.red,
-                          borderWidth: 4,
-                        ),
-                        PlotBand(
-                          start: controller.getStartHeartRateOfUsername(controller.username) + 10,
-                          end: controller.getStartHeartRateOfUsername(controller.username) + 10,
-                          borderColor: Colors.red,
-                          borderWidth: 4,
-                        ),
-                      ],
-                    ),
-                    series: <LineSeries<double, int>>[
-                      LineSeries<double, int>(
-                        onRendererCreated: (ChartSeriesController controller) {
-                          _chartSeriesController = controller;
-                        },
-                        dataSource: heartRateData[controller.username],
-                        xValueMapper: (_, index) => index,
-                        yValueMapper: (heartRate, _) => heartRate,
-                      ),
-                    ],
+                    onPressed: () {
+                      playerController.leaveMatch();
+                      GoRouter.of(context).go('/play/joinRoom');
+                    },
                   ),
-                      Text(currentHeartRate != 0
-                      ? currentHeartRate.toString()
-                                  : "--",
-                        style: const TextStyle(
-                            fontSize: 60,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'Raleway'),
-                      ),
-                      const SizedBox(
-                        height: 3,
-                      ),
-                      const Icon(
-                        Icons.favorite,
-                        color: Colors.red,
-                        size: 40,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Text('Send'),
-                  // SizedBox.expand(
-                  //   child: Visibility(
-                  //     visible: _duringCelebration,
-                  //     child: IgnorePointer(
-                  //       child: Confetti(
-                  //         isStopped: !_duringCelebration,
-                  //       ),
-                  //     ),
-                  //   ),
-                  // ),
-                  const SizedBox(width: 16),
-                  const Text('Log'),
                 ],
               ),
-            ),
+              SizedBox.expand(
+                child: SfCartesianChart(
+                  plotAreaBorderWidth: 0,
+                  primaryXAxis: const NumericAxis(
+                    isVisible: false,
+                  ),
+                  primaryYAxis: NumericAxis(
+                    majorGridLines: const MajorGridLines(width: 0),
+                    axisLine: const AxisLine(width: 0),
+                    interval: 10,
+                    minimum:
+                        controller.getStartHeartRateOfUsername(myUsername) - 10,
+                    maximum:
+                        controller.getStartHeartRateOfUsername(myUsername) + 10,
+                    plotBands: [
+                      PlotBand(
+                        start:
+                            controller.getStartHeartRateOfUsername(myUsername) -
+                                10,
+                        end: controller.getStartHeartRateOfUsername(myUsername) -
+                            10,
+                        borderColor: Colors.red,
+                        borderWidth: 4,
+                      ),
+                      PlotBand(
+                        start:
+                            controller.getStartHeartRateOfUsername(myUsername) +
+                                10,
+                        end: controller.getStartHeartRateOfUsername(myUsername) +
+                            10,
+                        borderColor: Colors.red,
+                        borderWidth: 4,
+                      ),
+                    ],
+                  ),
+                  series: <LineSeries<double, int>>[
+                    LineSeries<double, int>(
+                      onRendererCreated: (ChartSeriesController controller) {
+                        _chartSeriesController = controller;
+                      },
+                      dataSource: heartRateData[myUsername],
+                      xValueMapper: (_, index) => index,
+                      yValueMapper: (heartRate, _) => heartRate,
+                    ),
+                  ],
+                ),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    myUsername,
+                    style:
+                        TextStyle(fontFamily: 'Permanent Marker', fontSize: 50),
+                  ),
+                  Text(
+                    (heartRateData[myUsername] != null &&
+                            heartRateData[myUsername]!.isNotEmpty)
+                        ? heartRateData[myUsername]![-1].toString()
+                        : "--",
+                    style: const TextStyle(
+                        fontSize: 60,
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Raleway'),
+                  ),
+                  const SizedBox(
+                    height: 3,
+                  ),
+                  const Icon(
+                    Icons.favorite,
+                    color: Colors.red,
+                    size: 40,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    opponentUsername,
+                    style:
+                        TextStyle(fontFamily: 'Permanent Marker', fontSize: 50),
+                  ),
+                  Text(
+                    (heartRateData[opponentUsername] != null &&
+                            heartRateData[opponentUsername]!.isNotEmpty)
+                        ? heartRateData[opponentUsername]![-1].toString()
+                        : "--",
+                    style: const TextStyle(
+                        fontSize: 60,
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Raleway'),
+                  ),
+                  const SizedBox(
+                    height: 3,
+                  ),
+                  const Icon(
+                    Icons.favorite,
+                    color: Colors.red,
+                    size: 40,
+                  ),
+                ],
+              ),
+              SizedBox.expand(
+                child: SfCartesianChart(
+                  plotAreaBorderWidth: 0,
+                  primaryXAxis: const NumericAxis(
+                    isVisible: false,
+                  ),
+                  primaryYAxis: NumericAxis(
+                    majorGridLines: const MajorGridLines(width: 0),
+                    axisLine: const AxisLine(width: 0),
+                    interval: 10,
+                    minimum: controller
+                            .getStartHeartRateOfUsername(controller.username) -
+                        10,
+                    maximum: controller
+                            .getStartHeartRateOfUsername(controller.username) +
+                        10,
+                    plotBands: [
+                      PlotBand(
+                        start: controller.getStartHeartRateOfUsername(
+                                controller.username) -
+                            10,
+                        end: controller.getStartHeartRateOfUsername(
+                                controller.username) -
+                            10,
+                        borderColor: Colors.red,
+                        borderWidth: 4,
+                      ),
+                      PlotBand(
+                        start: controller.getStartHeartRateOfUsername(
+                                controller.username) +
+                            10,
+                        end: controller.getStartHeartRateOfUsername(
+                                controller.username) +
+                            10,
+                        borderColor: Colors.red,
+                        borderWidth: 4,
+                      ),
+                    ],
+                  ),
+                  series: <LineSeries<double, int>>[
+                    LineSeries<double, int>(
+                      onRendererCreated: (ChartSeriesController controller) {
+                        _chartSeriesController = controller;
+                      },
+                      dataSource: heartRateData[controller.username],
+                      xValueMapper: (_, index) => index,
+                      yValueMapper: (heartRate, _) => heartRate,
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
-      );
-  
-  
+      ),
+    );
   }
 }
