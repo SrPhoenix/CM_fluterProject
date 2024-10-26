@@ -3,7 +3,6 @@
 // BSD-style license that can be found in the LICENSE file.
 
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -24,21 +23,24 @@ class PlaySessionRoomScreen extends StatefulWidget {
   State<PlaySessionRoomScreen> createState() => _PlaySessionRoomScreen();
 }
 
-Widget _buildRectangularMenuArea(BuildContext context, PlayerController playerController, AudioController audioController, String buttonText) {
+Widget _buildRectangularMenuArea(
+    BuildContext context,
+    PlayerController playerController,
+    AudioController audioController,
+    String buttonText) {
   if (playerController.getHost()) {
     return MyButton(
       onPressed: () {
         audioController.playSfx(SfxType.buttonTap);
-        print("Pressed Start Game");
-        playerController.sendMessage(4, {'Username': playerController.username});
+        playerController
+            .sendMessage(4, {'Username': playerController.username});
         GoRouter.of(context).go('/play/Game');
       },
       child: Text(buttonText),
     );
-  }
-  else {
+  } else {
     return SizedBox.shrink(
-      child: Text(playerController.waitingHost),
+      child: Text("Waiting Host"),
     );
   }
 }
@@ -46,25 +48,19 @@ Widget _buildRectangularMenuArea(BuildContext context, PlayerController playerCo
 class _PlaySessionRoomScreen extends State<PlaySessionRoomScreen> {
   late PlayerController controller;
   late StreamSubscription dataListener;
-  void createDataListener() {
-    dataListener = controller.getSocket().onMatchData.listen((data) {
-      final content = utf8.decode(data.data);
-      // print('widget User ${data.presence.userId} sent $content with code ${data.opCode}');
-      switch (data.opCode) {
-        //Someone asked who is in lobby
-        case 4:
-          GoRouter.of(context).go('/play/Game');
-          break;
-        default:
-          // print(() => 'widget User ${data.presence.username} sent $content and code ${data.opCode}');
-      }
-    });
-  }
   @override
   void initState() {
     super.initState();
     controller = context.read<PlayerController>();
-    createDataListener();
+    createdDataListener();
+  }
+
+  void createdDataListener() {
+    dataListener = controller.uiStream.listen((data) {
+      if (data == "GAME_STARTED") {
+        GoRouter.of(context).go('/play/Game');
+      }
+    });
   }
 
   @override
@@ -72,12 +68,13 @@ class _PlaySessionRoomScreen extends State<PlaySessionRoomScreen> {
     super.dispose();
     await dataListener.cancel();
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final palette = context.watch<Palette>();
     final audioController = context.watch<AudioController>();
     final playerController = context.watch<PlayerController>();
+
     String buttonText = playerController.getHost() ? 'Start Game' : 'Ready';
     const gap = SizedBox(height: 10);
 
@@ -92,10 +89,14 @@ class _PlaySessionRoomScreen extends State<PlaySessionRoomScreen> {
               children: [
                 Text(
                   'Welcome, ${playerController.username}',
-                  style: TextStyle(fontFamily: 'Permanent Marker', fontSize: 30),
+                  style:
+                      TextStyle(fontFamily: 'Permanent Marker', fontSize: 30),
                 ),
                 IconButton(
-                  icon: Icon(Icons.door_front_door, color: Colors.red,),
+                  icon: Icon(
+                    Icons.door_front_door,
+                    color: Colors.red,
+                  ),
                   onPressed: () {
                     playerController.leaveMatch();
                     GoRouter.of(context).go('/play/joinRoom');
@@ -169,7 +170,8 @@ class _PlaySessionRoomScreen extends State<PlaySessionRoomScreen> {
             //   ),
           ],
         ),
-        rectangularMenuArea: _buildRectangularMenuArea( context,  playerController,  audioController, buttonText),
+        rectangularMenuArea: _buildRectangularMenuArea(
+            context, playerController, audioController, buttonText),
       ),
     );
   }

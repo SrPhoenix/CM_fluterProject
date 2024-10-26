@@ -18,7 +18,8 @@ import '../settings/persistence/settings_persistence.dart';
 /// and saves them to an injected persistence store.
 class PlayerController extends ChangeNotifier {
   static final _log = Logger('PlayerController');
-  static final _host = "192.168.160.57";
+  // static final _host = "192.168.160.57";
+  static final _host = "127.0.0.1";
   static const String _chars = 'ABCDEF1234567890';
   final Random _rnd = Random();
 
@@ -36,18 +37,14 @@ class PlayerController extends ChangeNotifier {
   late final NakamaWebsocketClient _socket;
   late Match _match;
   late UserPresence hostPresence;
-  String waitingHost = 'Waiting Host';
-  late StreamSubscription<MatchPresenceEvent> presenceSubscription;
   late StreamSubscription<MatchData> dataSubscription;
+
+  final StreamController<String> _uiStreamController = StreamController<String>.broadcast();
+  Stream<String> get uiStream => _uiStreamController.stream;
 
   String getRandomString(int length) => String.fromCharCodes(Iterable.generate(
       length, (_) => _chars.codeUnitAt(_rnd.nextInt(_chars.length))));
 
-  /// Creates a new instance of [SettingsController] backed by [store].
-  ///
-  /// By default, settings are persisted using [LocalStorageSettingsPersistence]
-  /// (i.e. NSUserDefaults on iOS, SharedPreferences on Android or
-  /// local storage on the web).
   PlayerController({SettingsPersistence? store})
       : _store = store ?? LocalStorageSettingsPersistence() {
     connectToNakama();
@@ -112,19 +109,13 @@ class PlayerController extends ChangeNotifier {
     Map<String, dynamic> message = {'Username': username, "IsHost": false};
     sendMessage(1, message);
   }
-  NakamaWebsocketClient getSocket() {
-    return _socket;
-  }
-  DateTime getTimer() {
-    return DateTime.now();
-  }
 
   void createDataListener() {
     dataSubscription = _socket.onMatchData.listen((data) {
       Map<String, dynamic> message;
       final content = utf8.decode(data.data);
       if (kDebugMode) {
-        print('Comntr s User ${data.presence.userId} sent $content with code ${data.opCode}');
+        print('User ${data.presence.userId} sent $content with code ${data.opCode}');
       }
       final jsonContent = jsonDecode(content) as Map<String, dynamic>;
       switch (data.opCode) {
@@ -143,9 +134,8 @@ class PlayerController extends ChangeNotifier {
         case 2:
           connectedUsers.add(Player(isMe:false, isHost: jsonContent["IsHost"].toString().toLowerCase() == 'true', displayName: jsonContent["Username"] as String) );
           notifyListeners();
-          //Leave match
+        //Leave match
         case 3:
-        print("dasdas jsonContent: $jsonContent");
           connectedUsers.removeWhere((element) => element.displayName == jsonContent["Username"]);
           if(jsonContent["IsHost"].toString().toLowerCase() == 'true'){
             connectedUsers.sort((a, b) => a.displayName.compareTo(b.displayName));
@@ -157,7 +147,9 @@ class PlayerController extends ChangeNotifier {
           }
           notifyListeners();
           break;
-          // notify players that the match is going to start
+        //Game as started
+        case 4:
+          _uiStreamController.sink.add("GAME_STARTED");
         default:
           _log.fine(() => 'controller User ${data.presence.username} sent $content and code ${data.opCode}');
       }
@@ -177,7 +169,6 @@ class PlayerController extends ChangeNotifier {
     if (kDebugMode) {
       print('Left match with id: ${_match.matchId}');
     }
-    // await presenceSubscription.cancel();
     await dataSubscription.cancel();
 
     connectedUsers = [];
@@ -211,7 +202,6 @@ class PlayerController extends ChangeNotifier {
     notifyListeners();
   }
 }
-
 
 class Player {
   final String displayName;
