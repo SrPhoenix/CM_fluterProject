@@ -188,7 +188,7 @@ class _GameScreen extends State<GameScreen> {
                       IconButton(
                         icon: Icon(Icons.door_front_door, color: Colors.red,),
                         onPressed: () {
-                          playerController.sendMessage(3, {'Username': playerController.username});
+                          playerController.leaveMatch();
                           GoRouter.of(context).go('/play/joinRoom');
                         },
                       ),

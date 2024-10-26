@@ -97,7 +97,7 @@ class _PlaySessionRoomScreen extends State<PlaySessionRoomScreen> {
                 IconButton(
                   icon: Icon(Icons.door_front_door, color: Colors.red,),
                   onPressed: () {
-                    playerController.sendMessage(3, {'Username': playerController.username});
+                    playerController.leaveMatch();
                     GoRouter.of(context).go('/play/joinRoom');
                   },
                 ),

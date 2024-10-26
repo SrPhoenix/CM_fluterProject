@@ -28,7 +28,7 @@ class PlayerController extends ChangeNotifier {
   String username = 'Anonymous${Random().nextInt(1000)}';
   String lobbyCode = '';
   List<Player> connectedUsers = [];
-  late bool _isHost;
+  bool _isHost = false;
   late String userId;
 
   late final NakamaBaseClient _client;
@@ -145,9 +145,12 @@ class PlayerController extends ChangeNotifier {
           notifyListeners();
           //Leave match
         case 3:
+        print("dasdas jsonContent: $jsonContent");
           connectedUsers.removeWhere((element) => element.displayName == jsonContent["Username"]);
           if(jsonContent["IsHost"].toString().toLowerCase() == 'true'){
             connectedUsers.sort((a, b) => a.displayName.compareTo(b.displayName));
+            connectedUsers[0].isHost = true;
+            print(connectedUsers[0].displayName);
             if(connectedUsers[0].displayName == username){
               _isHost = true;
             }
@@ -213,7 +216,7 @@ class PlayerController extends ChangeNotifier {
 class Player {
   final String displayName;
   final bool isMe;
-  final bool isHost;
+  bool isHost;
 
   Player( {required this.isMe, required this.isHost, required this.displayName});
 }
