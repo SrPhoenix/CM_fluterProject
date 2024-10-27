@@ -9,7 +9,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:nakama/nakama.dart';
-import 'package:watch_connectivity/watch_connectivity.dart';
 import 'dart:math';
 import 'dart:async';
 
@@ -21,7 +20,7 @@ import '../settings/persistence/settings_persistence.dart';
 class PlayerController extends ChangeNotifier {
   static final _log = Logger('PlayerController');
   // static final _host = "192.168.160.57";
-  static final _host = "192.168.1.92";
+  static final _host = "127.0.0.1";
   static const String _chars = 'ABCDEF1234567890';
   final Random _rnd = Random();
 
@@ -45,7 +44,7 @@ class PlayerController extends ChangeNotifier {
   static const double threshold = 10;
   late DateTime _startOfPlay;
 
-  final _watch = WatchConnectivity();
+  late Timer watchDataTimer;
   var startHeartRate = 0.0;
   var currentHeartRate = 0.0;
   late StreamSubscription<Map<String, dynamic>> watchMessages;
@@ -62,7 +61,7 @@ class PlayerController extends ChangeNotifier {
   PlayerController({SettingsPersistence? store})
       : _store = store ?? LocalStorageSettingsPersistence() {
     connectToNakama();
-    createWatchListener();
+    // createWatchListener();
   }
 
   Future<void> connectToNakama() async {
@@ -232,11 +231,11 @@ class PlayerController extends ChangeNotifier {
           var duration = jsonContent["Duration"] as int;
           _uiStreamController.sink.add(
               '{"Command":"END_GAME","Username":"$username","Duration":"$duration"}');
+          watchDataTimer.cancel();
           for (Player user in connectedUsers) {
             user.isReady = false;
           }
-          var message = {'Command': 'END_GAME'};
-          _watch.sendMessage(message);
+          break;
         default:
           _log.fine(() =>
               'User ${data.presence.username} sent $content and code ${data.opCode}');
@@ -244,70 +243,71 @@ class PlayerController extends ChangeNotifier {
     });
   }
 
+  double generateHeartRate(double baseValue, double threshold) {
+    final random = Random();
+    final randomOffset = random.nextDouble() * threshold * 2 - threshold;
+    return baseValue + randomOffset;
+  }
+
   void createWatchListener() {
-    _watch.messageStream.listen((e) {
-      // print("Whole: $e");
-      // print("Bool: ${e.containsKey("HeartRate")}");
-      // print("Type: ${e["HeartRate"].runtimeType}");
-      // print("Value: ${e["HeartRate"]}");
-      // print("Len Data: ${hearRateData.length}");
-      // print("Len FullData: ${hearRateFullData.length}");
-      var heartRate = e["HeartRate"] as double;
-      heartRate = double.parse(heartRate.toStringAsFixed(0));
-      if (heartRate != 0.0) {
-        if (startHeartRate == 0) {
-          startHeartRate = heartRate;
-        }
-        currentHeartRate = heartRate;
-        if (heartRateFullData.keys.contains(username)) {
-          heartRateFullData[username]!.add(heartRate);
-        } else {
-          heartRateFullData[username] = [heartRate];
-        }
-        sendMessage(5, {
-          "Command": "HEART_RATE",
-          "Username": "$username",
-          "HeartRate": "$heartRate"
-        });
-        if (!allReady) {
-          var playersReady = 0;
-          for (var player in connectedUsers) {
-            if (player.displayName == username) {
-              player.isReady = true;
-            }
-            if (player.isReady) {
-              playersReady = playersReady + 1;
-            }
+    startHeartRate = 77;
+    watchDataTimer = Timer.periodic(Duration(seconds: 1), (timer) {
+      currentHeartRate = generateHeartRate(startHeartRate, threshold);
+      currentHeartRate = double.parse(currentHeartRate.toStringAsFixed(0));
+      if (heartRateFullData.keys.contains(username)) {
+        heartRateFullData[username]!.add(currentHeartRate);
+      } else {
+        heartRateFullData[username] = [currentHeartRate];
+      }
+      sendMessage(5, {
+        "Command": "HEART_RATE",
+        "Username": "$username",
+        "HeartRate": "$currentHeartRate"
+      });
+      if (!allReady) {
+        var playersReady = 0;
+        for (var player in connectedUsers) {
+          if (player.displayName == username) {
+            player.isReady = true;
           }
-          print("Players Ready watch: $playersReady");
-          if (playersReady < connectedUsers.length) {
-            return;
+          if (player.isReady) {
+            playersReady = playersReady + 1;
           }
-          allReady = true;
-          heartRateFullData[username] = [heartRate];
         }
 
+        print("Players Ready watch: $playersReady");
+
+        if (playersReady < connectedUsers.length) {
+          return;
+        }
+        allReady = true;
         _uiStreamController.sink.add(
-            '{"Command":"HEART_RATE","Username":"$username","HeartRate":"$heartRate"}');
-        if (_isHost) {
-          if (hasGameEnded(username, heartRate)) {
-            endGame(
-                username, DateTime.now().difference(_startOfPlay).inSeconds);
-          }
+            '{"Command":"HEART_RATE","Username":"$username","HeartRate":"$startHeartRate"}');
+        heartRateFullData[username] = [startHeartRate];
+
+        return;
+      }
+
+      _uiStreamController.sink.add(
+          '{"Command":"HEART_RATE","Username":"$username","HeartRate":"$currentHeartRate"}');
+      if (_isHost) {
+        if (hasGameEnded(username, currentHeartRate)) {
+          endGame(username, DateTime.now().difference(_startOfPlay).inSeconds);
         }
       }
     });
+    print("ISACTIVE: ${watchDataTimer.isActive}");
   }
 
   void startGame() {
     var message = {'Command': 'START_GAME'};
-    _watch.sendMessage(message);
     _startOfPlay = DateTime.now();
     for (Player user in connectedUsers) {
       heartRateFullData[user.displayName] = [];
       user.isReady = false;
     }
     allReady = false;
+    createWatchListener();
   }
 
   bool hasGameEnded(String username, double heartRate) {
@@ -326,14 +326,13 @@ class PlayerController extends ChangeNotifier {
   void endGame(String username, int duration) {
     var message = {'Command': 'END_GAME'};
     Player? winningPlayer = null;
-    _watch.sendMessage(message);
     for (Player user in connectedUsers) {
       if (user.displayName != username) {
         print("DisplaynameTest: ${user.displayName}");
         print("UsernameTest: ${username}");
         winningPlayer = user;
-        user.isReady = false;
       }
+      user.isReady = false;
     }
     allReady = false;
 
@@ -344,6 +343,7 @@ class PlayerController extends ChangeNotifier {
         6, {'Username': winningPlayer!.displayName, 'Duration': duration});
     _uiStreamController.sink.add(
         '{"Command":"END_GAME","Username":"${winningPlayer.displayName}","Duration":"$duration"}');
+    watchDataTimer.cancel();
   }
 
   double getStartHeartRateOfUsername(String username) {
@@ -366,7 +366,9 @@ class PlayerController extends ChangeNotifier {
       print('Left match with id: ${_match.matchId}');
     }
     await dataSubscription.cancel();
-
+    if (watchDataTimer.isActive) {
+      watchDataTimer.cancel();
+    }
     connectedUsers = [];
     notifyListeners();
   }

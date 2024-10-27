@@ -83,10 +83,12 @@ class _GameScreen extends State<GameScreen> {
           heartRateData[username]!.removeAt(0);
           if (username == opponentUsername) {
             _opponentChartSeriesController?.updateDataSource(
-                addedDataIndex: heartRateData[username]!.length - 1, removedDataIndex: 0);
+                addedDataIndex: heartRateData[username]!.length - 1,
+                removedDataIndex: 0);
           } else {
             _myChartSeriesController?.updateDataSource(
-                addedDataIndex: heartRateData[username]!.length - 1, removedDataIndex: 0);
+                addedDataIndex: heartRateData[username]!.length - 1,
+                removedDataIndex: 0);
           }
         }
         setState(() {});
@@ -262,21 +264,21 @@ class _GameScreen extends State<GameScreen> {
                         10,
                     plotBands: [
                       PlotBand(
-                        start: controller.getStartHeartRateOfUsername(
-                                opponentUsername) -
+                        start: controller
+                                .getStartHeartRateOfUsername(opponentUsername) -
                             10,
-                        end: controller.getStartHeartRateOfUsername(
-                                opponentUsername) -
+                        end: controller
+                                .getStartHeartRateOfUsername(opponentUsername) -
                             10,
                         borderColor: Colors.red,
                         borderWidth: 4,
                       ),
                       PlotBand(
-                        start: controller.getStartHeartRateOfUsername(
-                                opponentUsername) +
+                        start: controller
+                                .getStartHeartRateOfUsername(opponentUsername) +
                             10,
-                        end: controller.getStartHeartRateOfUsername(
-                                opponentUsername) +
+                        end: controller
+                                .getStartHeartRateOfUsername(opponentUsername) +
                             10,
                         borderColor: Colors.red,
                         borderWidth: 4,
