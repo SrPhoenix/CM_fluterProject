@@ -20,7 +20,7 @@ import '../settings/persistence/settings_persistence.dart';
 class PlayerController extends ChangeNotifier {
   static final _log = Logger('PlayerController');
   // static final _host = "192.168.160.57";
-  static final _host = "192.168.1.92";
+  static final _host = "192.168.160.57";
   static const String _chars = 'ABCDEF1234567890';
   final Random _rnd = Random();
 
