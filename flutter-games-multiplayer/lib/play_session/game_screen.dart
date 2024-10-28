@@ -67,7 +67,6 @@ class _GameScreen extends State<GameScreen> {
         var username = jsonData["Username"] as String;
         var heartRate = double.parse(jsonData["HeartRate"] as String);
         heartRateData[username]!.add(heartRate);
-        print("Added heartrate $heartRate to username $username");
         if (heartRateData[username]!.length == 20) {
           heartRateData[username]!.removeAt(0);
           if (username == opponentUsername) {
@@ -184,7 +183,7 @@ class _GameScreen extends State<GameScreen> {
                   Text(
                     (heartRateData[myUsername] != null &&
                             heartRateData[myUsername]!.isNotEmpty)
-                        ? heartRateData[myUsername]!.last.toString()
+                        ? heartRateData[myUsername]!.last.toStringAsFixed(0)
                         : "--",
                     style: const TextStyle(
                         fontSize: 60,
@@ -214,7 +213,7 @@ class _GameScreen extends State<GameScreen> {
                   Text(
                     (heartRateData[opponentUsername] != null &&
                             heartRateData[opponentUsername]!.isNotEmpty)
-                        ? heartRateData[opponentUsername]!.last.toString()
+                        ? heartRateData[opponentUsername]!.last.toStringAsFixed(0)
                         : "--",
                     style: const TextStyle(
                         fontSize: 60,

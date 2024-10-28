@@ -5,27 +5,21 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:nakama/nakama.dart';
 import 'dart:math';
 import 'dart:async';
 
-import '../settings/persistence/local_storage_settings_persistence.dart';
-import '../settings/persistence/settings_persistence.dart';
-
 /// An class that holds settings like [playerName] or [musicOn],
 /// and saves them to an injected persistence store.
 class PlayerController extends ChangeNotifier {
   static final _log = Logger('PlayerController');
-  static final _host = "192.168.160.57";
-  // static final _host = "192.168.1.92";
+  // static final _host = "192.168.160.57";
+  static final _host = "127.0.0.1";
   static const String _chars = 'ABCDEF1234567890';
   final Random _rnd = Random();
 
   /// The persistence store that is used to save settings.
-  final SettingsPersistence _store;
 
   String username = 'Anonymous${Random().nextInt(1000)}';
   String lobbyCode = '';
@@ -58,8 +52,7 @@ class PlayerController extends ChangeNotifier {
   String getRandomString(int length) => String.fromCharCodes(Iterable.generate(
       length, (_) => _chars.codeUnitAt(_rnd.nextInt(_chars.length))));
 
-  PlayerController({SettingsPersistence? store})
-      : _store = store ?? LocalStorageSettingsPersistence() {
+  PlayerController() {
     connectToNakama();
     // createWatchListener();
   }
@@ -175,7 +168,6 @@ class PlayerController extends ChangeNotifier {
             connectedUsers
                 .sort((a, b) => a.displayName.compareTo(b.displayName));
             connectedUsers[0].isHost = true;
-            print(connectedUsers[0].displayName);
             if (connectedUsers[0].displayName == username) {
               _isHost = true;
             }
@@ -202,12 +194,19 @@ class PlayerController extends ChangeNotifier {
                 playersReady = playersReady + 1;
               }
             }
-            print("Players Ready case: $playersReady");
             if (playersReady < connectedUsers.length) {
               break;
             }
             allReady = true;
+            heartRateFullData.forEach((key, list) {
+              if (list.isNotEmpty) {
+                list = [list.last];
+              } else {
+                list = [];
+              }
+            });
             heartRateFullData[username] = [heartRate];
+            _startOfPlay = DateTime.now();
           }
 
           _uiStreamController.sink.add(
@@ -251,7 +250,7 @@ class PlayerController extends ChangeNotifier {
   void createWatchListener() {
     startHeartRate = 77;
     watchDataTimer = Timer.periodic(Duration(seconds: 1), (timer) {
-      currentHeartRate = generateHeartRate(startHeartRate, threshold/2);
+      currentHeartRate = generateHeartRate(startHeartRate, 4);
       currentHeartRate = double.parse(currentHeartRate.toStringAsFixed(0));
       if (heartRateFullData.keys.contains(username)) {
         heartRateFullData[username]!.add(currentHeartRate);
@@ -260,7 +259,7 @@ class PlayerController extends ChangeNotifier {
       }
       sendMessage(5, {
         "Command": "HEART_RATE",
-        "Username": "$username",
+        "Username": username,
         "HeartRate": "$currentHeartRate"
       });
       if (!allReady) {
@@ -274,16 +273,21 @@ class PlayerController extends ChangeNotifier {
           }
         }
 
-        print("Players Ready watch: $playersReady");
-
         if (playersReady < connectedUsers.length) {
           return;
         }
         allReady = true;
+        heartRateFullData.forEach((key, list) {
+          if (list.isNotEmpty) {
+            list = [list.last];
+          } else {
+            list = [];
+          }
+        });
+        _startOfPlay = DateTime.now();
+        heartRateFullData[username] = [startHeartRate];
         _uiStreamController.sink.add(
             '{"Command":"HEART_RATE","Username":"$username","HeartRate":"$startHeartRate"}');
-        heartRateFullData[username] = [startHeartRate];
-
         return;
       }
 
@@ -295,11 +299,9 @@ class PlayerController extends ChangeNotifier {
         }
       }
     });
-    print("ISACTIVE: ${watchDataTimer.isActive}");
   }
 
   void startGame() {
-    var message = {'Command': 'START_GAME'};
     _startOfPlay = DateTime.now();
     for (Player user in connectedUsers) {
       heartRateFullData[user.displayName] = [];
@@ -313,22 +315,17 @@ class PlayerController extends ChangeNotifier {
     if (connectedUsers.length == 1) {
       return true;
     }
-    print("Data -> Username $username HeartRate $heartRate");
     if (heartRateFullData[username]![0] + threshold < heartRate ||
         heartRateFullData[username]![0] - threshold > heartRate) {
-      print("User $username has lost");
       return true;
     }
     return false;
   }
 
   void endGame(String username, int duration) {
-    var message = {'Command': 'END_GAME'};
-    Player? winningPlayer = null;
+    Player? winningPlayer;
     for (Player user in connectedUsers) {
       if (user.displayName != username) {
-        print("DisplaynameTest: ${user.displayName}");
-        print("UsernameTest: ${username}");
         winningPlayer = user;
       }
       user.isReady = false;
@@ -339,7 +336,7 @@ class PlayerController extends ChangeNotifier {
         isMe: false, isHost: false, displayName: "No one", isReady: false);
 
     sendMessage(
-        6, {'Username': winningPlayer!.displayName, 'Duration': duration});
+        6, {'Username': winningPlayer.displayName, 'Duration': duration});
     _uiStreamController.sink.add(
         '{"Command":"END_GAME","Username":"${winningPlayer.displayName}","Duration":"$duration"}');
     watchDataTimer.cancel();
@@ -389,7 +386,6 @@ class PlayerController extends ChangeNotifier {
     lobbyCode = code.toUpperCase();
     notifyListeners();
   }
-
 }
 
 class Player {

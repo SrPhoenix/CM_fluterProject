@@ -4,7 +4,6 @@
 
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math';
 import 'package:syncfusion_flutter_charts/charts.dart';
 
 import 'package:flutter/material.dart';
@@ -12,13 +11,9 @@ import 'package:go_router/go_router.dart';
 import 'package:multiplayer/audio/audio_controller.dart';
 import 'package:multiplayer/play_session/player_controller.dart';
 import 'package:multiplayer/audio/sounds.dart';
-import 'package:multiplayer/style/confetti.dart';
 import 'package:multiplayer/win_game/score.dart';
 import 'package:provider/provider.dart';
 
-import '../style/my_button.dart';
-import '../style/palette.dart';
-import '../style/responsive_screen.dart';
 
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
@@ -78,7 +73,6 @@ class _GameScreen extends State<GameScreen> {
         var username = jsonData["Username"] as String;
         var heartRate = double.parse(jsonData["HeartRate"] as String);
         heartRateData[username]!.add(heartRate);
-        print("Added heartrate $heartRate to username $username");
         if (heartRateData[username]!.length == 20) {
           heartRateData[username]!.removeAt(0);
           if (username == opponentUsername) {
@@ -197,7 +191,7 @@ class _GameScreen extends State<GameScreen> {
                   Text(
                     (heartRateData[myUsername] != null &&
                             heartRateData[myUsername]!.isNotEmpty)
-                        ? heartRateData[myUsername]!.last.toString()
+                        ? heartRateData[myUsername]!.last.toStringAsFixed(0)
                         : "--",
                     style: const TextStyle(
                         fontSize: 60,
@@ -227,7 +221,7 @@ class _GameScreen extends State<GameScreen> {
                   Text(
                     (heartRateData[opponentUsername] != null &&
                             heartRateData[opponentUsername]!.isNotEmpty)
-                        ? heartRateData[opponentUsername]!.last.toString()
+                        ? heartRateData[opponentUsername]!.last.toStringAsFixed(0)
                         : "--",
                     style: const TextStyle(
                         fontSize: 60,
