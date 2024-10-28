@@ -9,7 +9,7 @@ import 'package:multiplayer/audio/sounds.dart';
 import 'package:multiplayer/play_session/player_controller.dart';
 import 'package:provider/provider.dart';
 
-import './score.dart';
+import '../style/score.dart';
 import '../style/my_button.dart';
 import '../style/palette.dart';
 import '../style/responsive_screen.dart';

@@ -7,7 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:multiplayer/play_session/create_user_session.dart';
 import 'package:multiplayer/play_session/game_screen.dart';
 import 'package:multiplayer/play_session/join_lobby_session.dart';
-import 'package:multiplayer/win_game/score.dart';
+import 'package:multiplayer/style/score.dart';
 import 'package:multiplayer/win_game/win_game_screen.dart';
 import 'package:provider/provider.dart';
 

@@ -251,7 +251,7 @@ class PlayerController extends ChangeNotifier {
   void createWatchListener() {
     startHeartRate = 77;
     watchDataTimer = Timer.periodic(Duration(seconds: 1), (timer) {
-      currentHeartRate = generateHeartRate(startHeartRate, threshold);
+      currentHeartRate = generateHeartRate(startHeartRate, threshold/2);
       currentHeartRate = double.parse(currentHeartRate.toStringAsFixed(0));
       if (heartRateFullData.keys.contains(username)) {
         heartRateFullData[username]!.add(currentHeartRate);

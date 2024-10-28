@@ -4,7 +4,6 @@
 
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math';
 import 'package:syncfusion_flutter_charts/charts.dart';
 
 import 'package:flutter/material.dart';
@@ -12,13 +11,8 @@ import 'package:go_router/go_router.dart';
 import 'package:multiplayer/audio/audio_controller.dart';
 import 'package:multiplayer/play_session/player_controller.dart';
 import 'package:multiplayer/audio/sounds.dart';
-import 'package:multiplayer/style/confetti.dart';
-import 'package:multiplayer/win_game/score.dart';
+import 'package:multiplayer/style/score.dart';
 import 'package:provider/provider.dart';
-
-import '../style/my_button.dart';
-import '../style/palette.dart';
-import '../style/responsive_screen.dart';
 
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
@@ -31,7 +25,6 @@ class _GameScreen extends State<GameScreen> {
   late PlayerController controller;
   ChartSeriesController? _myChartSeriesController;
   ChartSeriesController? _opponentChartSeriesController;
-  static const _celebrationDuration = Duration(milliseconds: 2000);
   bool lost = false;
   static const _preCelebrationDuration = Duration(milliseconds: 500);
   int upperBounder = 98;
@@ -63,10 +56,6 @@ class _GameScreen extends State<GameScreen> {
 
     final audioController = context.read<AudioController>();
     audioController.playSfx(SfxType.congrats);
-
-    /// Give the player some time to see the celebration animation.
-    await Future<void>.delayed(_celebrationDuration);
-    if (!mounted) return;
 
     GoRouter.of(context).go('/play/won', extra: {'score': score});
   }

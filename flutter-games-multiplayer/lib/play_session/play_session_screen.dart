@@ -8,7 +8,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:multiplayer/audio/audio_controller.dart';
-import 'package:multiplayer/play_session/dash_player_box.dart';
+import 'package:multiplayer/style/dash_player_box.dart';
 import 'package:multiplayer/play_session/player_controller.dart';
 import 'package:multiplayer/audio/sounds.dart';
 import 'package:provider/provider.dart';
