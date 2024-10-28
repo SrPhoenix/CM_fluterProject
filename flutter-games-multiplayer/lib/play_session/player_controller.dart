@@ -6,7 +6,6 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:nakama/nakama.dart';
 import 'package:watch_connectivity/watch_connectivity.dart';
@@ -66,7 +65,6 @@ class PlayerController extends ChangeNotifier {
   }
 
   Future<void> connectToNakama() async {
-    await _loadStateFromPersistence();
     _client = getNakamaClient(
       host: _host,
       ssl: false,
@@ -381,7 +379,6 @@ class PlayerController extends ChangeNotifier {
 
   void setUsername(String username) {
     this.username = username;
-    _store.savePlayerName(username);
     notifyListeners();
   }
 
@@ -390,13 +387,6 @@ class PlayerController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _loadStateFromPersistence() async {
-    final loadedValues = await Future.wait([
-      _store.getPlayerName().then((value) => username = value),
-    ]);
-    _log.fine(() => 'Loaded settings: $loadedValues');
-    notifyListeners();
-  }
 }
 
 class Player {
